@@ -1,4 +1,4 @@
-name: Data Sync
+name: Data Collect
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  sync:
+  collect:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

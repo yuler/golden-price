@@ -68,7 +68,7 @@ The Astro app in `apps/www` copies `data/` into `public/data/` at build time and
 - a responsive Liveline intraday chart with pointer and touch scrubbing
 - honest empty, sparse, stale, loading, and error states
 
-GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` changes or after a successful Data Sync run.
+GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` changes or after a successful Data Collect run.
 
 ## Stack
 
