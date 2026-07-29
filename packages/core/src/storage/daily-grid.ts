@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const HOURS = 24;
-export const SLOTS_PER_HOUR = 6;
+export const SLOTS_PER_HOUR = 12;
 export const UNIT = "CNY/g";
 export const LOOKBACK_DAYS = 7;
 
@@ -34,16 +34,16 @@ function dataRoot(): string {
     : path.join(REPO_ROOT, "data");
 }
 
-/** Empty 24×6 grid of nulls. */
+/** Empty 24×12 grid of nulls. */
 export function emptyGrid(): PriceGrid {
   return Array.from({ length: HOURS }, () =>
     Array.from({ length: SLOTS_PER_HOUR }, () => null),
   );
 }
 
-/** Slot index 0–5 for minutes 0, 10, 20, 30, 40, 50. */
+/** Slot index 0–11 for five-minute intervals. */
 export function slotIndex(minute: number): number {
-  return Math.min(SLOTS_PER_HOUR - 1, Math.floor(minute / 10));
+  return Math.min(SLOTS_PER_HOUR - 1, Math.floor(minute / 5));
 }
 
 /** Asia/Shanghai calendar parts for an instant. */
@@ -108,12 +108,13 @@ export async function saveDailyFile(
 ): Promise<string> {
   const filePath = dayFilePath(storageKey, file.date);
   await mkdir(path.dirname(filePath), { recursive: true });
-  const body = `${JSON.stringify(file, null, 2)}\n`;
+  const rows = file.prices.map((row) => `    ${JSON.stringify(row)}`);
+  const body = `{\n  "date": ${JSON.stringify(file.date)},\n  "unit": ${JSON.stringify(file.unit)},\n  "prices": [\n${rows.join(",\n")}\n  ]\n}\n`;
   await writeFile(filePath, body, "utf8");
   return filePath;
 }
 
-/** Write one cell, forward-fill earlier null gaps, and persist. */
+/** Write a finite value without erasing an existing quote with null. */
 export async function writeSlot(
   storageKey: string,
   date: string,
@@ -123,31 +124,9 @@ export async function writeSlot(
 ): Promise<string> {
   assertHourSlot(hour, slot);
   const file = await loadOrCreateDailyFile(storageKey, date);
-
-  let last = await findNearestPreviousPrice(storageKey, date, 0, 0);
-  const resolvedCurrent =
-    typeof value === "number" && Number.isFinite(value) ? value : last;
-
-  for (let h = 0; h <= hour; h++) {
-    const lastSlot = h === hour ? slot : SLOTS_PER_HOUR - 1;
-    for (let s = 0; s <= lastSlot; s++) {
-      const existing = file.prices[h][s];
-      if (typeof existing === "number" && Number.isFinite(existing)) {
-        last = existing;
-        continue;
-      }
-
-      if (h === hour && s === slot) {
-        file.prices[h][s] = resolvedCurrent;
-        if (typeof resolvedCurrent === "number") last = resolvedCurrent;
-      } else if (last !== null) {
-        file.prices[h][s] = last;
-      } else if (resolvedCurrent !== null) {
-        file.prices[h][s] = resolvedCurrent;
-      }
-    }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    file.prices[hour][slot] = value;
   }
-
   return saveDailyFile(storageKey, file);
 }
 

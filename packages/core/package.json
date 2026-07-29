@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/channels/jingjinjin.cn/decode.test.ts src/storage/daily-grid.test.ts"
+    "test": "tsx --test src/channels/jingjinjin.cn/decode.test.ts src/collect.test.ts src/storage/daily-grid.test.ts"
   },
   "dependencies": {
     "ws": "^8.18.1"

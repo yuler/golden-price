@@ -24,7 +24,7 @@ flowchart LR
 
 ## Data format
 
-`data/<channel>/YYYY-MM-DD.json` — 24 h × 6 slots (every 10 min), each cell is `number` or `null`.
+`data/<channel>/YYYY-MM-DD.json` — 24 h × 12 slots (every 5 min), each cell is `number` or `null`.
 
 ```json
 {
@@ -37,7 +37,7 @@ flowchart LR
 }
 ```
 
-`prices[h][i]` — hour `h` (0–23), slot `i` (0–5). Slot indexes use Asia/Shanghai wall time.
+`prices[h][i]` — hour `h` (0–23), slot `i` (0–11). Slot indexes use Asia/Shanghai wall time.
 
 ## Channels
 
@@ -63,10 +63,10 @@ pnpm www:build     # production static build
 
 The Astro app in `apps/www` copies `data/` into `public/data/` at build time and serves:
 
-- a channel selector (first version defaults to `jingjinjin.cn`)
-- a date picker
-- latest price for the selected day
-- an intraday line chart (ECharts)
+- the latest available single-channel gold quote
+- today's absolute and percentage change when at least two quotes exist
+- a responsive Liveline intraday chart with pointer and touch scrubbing
+- honest empty, sparse, stale, loading, and error states
 
 GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` changes or after a successful Data Sync run.
 
@@ -75,5 +75,5 @@ GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` 
 - **pnpm workspace** — monorepo
 - **TypeScript** — CLI and shared library
 - **Astro** — static site
-- **ECharts** — intraday charts
+- **React + Liveline** — responsive client-side intraday market chart
 - **GitHub Actions** — scheduled collection and Pages deploy

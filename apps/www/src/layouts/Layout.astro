@@ -7,11 +7,14 @@ const { title } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Intraday gold prices in CNY per gram." />
+    <meta
+      name="description"
+      content="每五分钟采集一次的人民币黄金克价与当日走势。"
+    />
     <title>{title}</title>
   </head>
   <body>
@@ -22,12 +25,12 @@ const { title } = Astro.props;
 <style is:global>
   :root {
     color-scheme: dark;
-    --bg: #0f1115;
-    --panel: #171a21;
-    --text: #eef0f4;
-    --muted: #9aa3b2;
-    --border: #2a3140;
-    --accent: #e3c565;
+    --bg: #101116;
+    --text: #f4f0e6;
+    --muted: #74777f;
+    --gold: #edc652;
+    --up: #62d39a;
+    --down: #ef6f72;
   }
 
   * {
@@ -37,15 +40,24 @@ const { title } = Astro.props;
   html,
   body {
     margin: 0;
+    min-width: 20rem;
     min-height: 100%;
-    background: radial-gradient(circle at top, #1b2030 0%, var(--bg) 45%);
+    background: var(--bg);
     color: var(--text);
     font-family:
-      "IBM Plex Sans",
+      Inter,
+      "PingFang SC",
+      "Microsoft YaHei",
       "Segoe UI",
       system-ui,
       -apple-system,
       sans-serif;
     line-height: 1.5;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
   }
 </style>
