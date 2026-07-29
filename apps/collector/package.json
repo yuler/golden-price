@@ -1,0 +1,19 @@
+{
+  "name": "@golden-price/collector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch": "tsx src/cli.ts",
+    "collect": "tsx src/collect.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@golden-price/collector-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

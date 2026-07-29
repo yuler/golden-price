@@ -1,0 +1,51 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Intraday gold prices in CNY per gram." />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --text: #eef0f4;
+    --muted: #9aa3b2;
+    --border: #2a3140;
+    --accent: #e3c565;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: radial-gradient(circle at top, #1b2030 0%, var(--bg) 45%);
+    color: var(--text);
+    font-family:
+      "IBM Plex Sans",
+      "Segoe UI",
+      system-ui,
+      -apple-system,
+      sans-serif;
+    line-height: 1.5;
+  }
+</style>

@@ -1,0 +1,25 @@
+{
+  "name": "@golden-price/www",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "tsx scripts/prepare-data.ts",
+    "dev": "astro dev",
+    "prebuild": "tsx scripts/prepare-data.ts",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "@golden-price/collector-core": "workspace:*",
+    "astro": "^5.7.10",
+    "echarts": "^5.6.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

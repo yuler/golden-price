@@ -23,15 +23,15 @@ export interface ShanghaiParts {
   slot: number;
 }
 
-const PACKAGE_ROOT = path.resolve(
+const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
+  "../../../..",
 );
 
 function dataRoot(): string {
   return process.env.GOLDEN_PRICE_DATA_ROOT
     ? path.resolve(process.env.GOLDEN_PRICE_DATA_ROOT)
-    : path.join(PACKAGE_ROOT, "data");
+    : path.join(REPO_ROOT, "data");
 }
 
 /** Empty 24×6 grid of nulls. */
