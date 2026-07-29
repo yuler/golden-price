@@ -8,7 +8,8 @@
     "build": "tsc",
     "fetch": "tsx src/cli.ts",
     "collect": "tsx src/collect.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/channels/jingjinjin.cn/decode.test.ts src/storage/daily-grid.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

@@ -44,9 +44,10 @@ export function extractOriginHuangjin(
 
   const huigou = quote.huigou;
   if (typeof huigou !== "number" || !Number.isFinite(huigou)) return null;
+  if (typeof state.trade !== "boolean") return null;
 
   return {
     cnyPerGram: huigou,
-    trade: state.trade === true,
+    trade: state.trade,
   };
 }

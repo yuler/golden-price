@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const HOURS = 24;
 export const SLOTS_PER_HOUR = 6;
@@ -22,7 +23,16 @@ export interface ShanghaiParts {
   slot: number;
 }
 
-const DATA_ROOT = path.resolve("data");
+const PACKAGE_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+
+function dataRoot(): string {
+  return process.env.GOLDEN_PRICE_DATA_ROOT
+    ? path.resolve(process.env.GOLDEN_PRICE_DATA_ROOT)
+    : path.join(PACKAGE_ROOT, "data");
+}
 
 /** Empty 24×6 grid of nulls. */
 export function emptyGrid(): PriceGrid {
@@ -61,7 +71,7 @@ export function shanghaiParts(now: Date = new Date()): ShanghaiParts {
 }
 
 export function dayFilePath(storageKey: string, date: string): string {
-  return path.join(DATA_ROOT, storageKey, `${date}.json`);
+  return path.join(dataRoot(), storageKey, `${date}.json`);
 }
 
 export function createDailyFile(date: string): DailyPriceFile {
@@ -103,7 +113,7 @@ export async function saveDailyFile(
   return filePath;
 }
 
-/** Write one cell and persist. Returns the written path. */
+/** Write one cell, forward-fill earlier null gaps, and persist. */
 export async function writeSlot(
   storageKey: string,
   date: string,
@@ -113,7 +123,31 @@ export async function writeSlot(
 ): Promise<string> {
   assertHourSlot(hour, slot);
   const file = await loadOrCreateDailyFile(storageKey, date);
-  file.prices[hour][slot] = value;
+
+  let last = await findNearestPreviousPrice(storageKey, date, 0, 0);
+  const resolvedCurrent =
+    typeof value === "number" && Number.isFinite(value) ? value : last;
+
+  for (let h = 0; h <= hour; h++) {
+    const lastSlot = h === hour ? slot : SLOTS_PER_HOUR - 1;
+    for (let s = 0; s <= lastSlot; s++) {
+      const existing = file.prices[h][s];
+      if (typeof existing === "number" && Number.isFinite(existing)) {
+        last = existing;
+        continue;
+      }
+
+      if (h === hour && s === slot) {
+        file.prices[h][s] = resolvedCurrent;
+        if (typeof resolvedCurrent === "number") last = resolvedCurrent;
+      } else if (last !== null) {
+        file.prices[h][s] = last;
+      } else if (resolvedCurrent !== null) {
+        file.prices[h][s] = resolvedCurrent;
+      }
+    }
+  }
+
   return saveDailyFile(storageKey, file);
 }
 

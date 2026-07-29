@@ -60,7 +60,7 @@ async function main(): Promise<void> {
   console.log(
     JSON.stringify(
       {
-        channel: "jingjinjin",
+        channel: "jingjinjin.cn",
         storageKey: JINGJINJIN_STORAGE_KEY,
         date: result.date,
         hour: result.hour,

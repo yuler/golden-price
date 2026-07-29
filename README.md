@@ -8,12 +8,12 @@ Collect gold prices from multiple channels and normalize to CNY/g.
 flowchart LR
   C[Channel] --> TS[TypeScript collector]
   TS --> N[Normalize to CNY/g]
-  N --> D[data/YYYY-MM-DD.json]
+  N --> D[data/channel/YYYY-MM-DD.json]
   D --> GA[GitHub Actions]
   GA -.-> S[Website]
 ```
 
-JSON files are git-tracked. When the market is closed, slots are `null` or filled with the nearest previous price.
+JSON files are git-tracked. When the market is closed, slots are filled with the nearest previous price. Missed collection ticks on the same day are forward-filled on the next successful run.
 
 ## Channels
 
@@ -37,7 +37,9 @@ pnpm fetch
 
 ## Data format
 
-`data/YYYY-MM-DD.json` — 24 h × 6 slots (every 10 min), each cell is `number` or `null`.
+`data/<channel>/YYYY-MM-DD.json` — 24 h × 6 slots (every 10 min), each cell is `number` or `null`.
+
+Example: `data/jingjinjin.cn/2026-07-29.json`
 
 ```json
 {
@@ -52,6 +54,8 @@ pnpm fetch
 
 `prices[h][i]` — hour `h` (0–23), slot `i` (0–5). Always 24 rows × 6 cells.
 
+Scheduled collection runs on UTC cron (`*/10`); slot indexes always use Asia/Shanghai wall time.
+
 ## Stack
 
 - **TypeScript** — collectors
@@ -62,7 +66,7 @@ pnpm fetch
 
 - [x] Channel SDK + `jingjinjin.cn` collector
 - [x] Daily JSON persistence
-- [ ] Scheduled runs via GitHub Actions
-- [ ] Market-closed handling
+- [x] Scheduled runs via GitHub Actions
+- [x] Market-closed / missed-slot gap fill
 - [ ] Subscriptions / alerts
 - [ ] Website
