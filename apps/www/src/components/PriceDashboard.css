@@ -1,0 +1,254 @@
+.market-page {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto minmax(16rem, 1fr) auto;
+  width: min(76rem, 100%);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  overflow: hidden;
+}
+
+.market-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    radial-gradient(circle at 80% 44%, rgb(210 164 48 / 16%), transparent 38%),
+    radial-gradient(circle at 15% 0%, rgb(255 255 255 / 4%), transparent 31%);
+  content: "";
+  pointer-events: none;
+}
+
+.market-page > * {
+  min-width: 0;
+}
+
+.market-header,
+.market-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.market-header p {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.market-header span,
+.market-footer {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.quote-block {
+  align-self: end;
+  margin-top: clamp(3.5rem, 10vh, 7rem);
+}
+
+.latest-price {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(3.25rem, 9vw, 5.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+}
+
+.latest-price span {
+  margin-left: 0.65rem;
+  color: var(--muted);
+  font-size: clamp(0.78rem, 2vw, 0.95rem);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.daily-change {
+  margin: 1rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-change[data-tone="up"] {
+  color: var(--up);
+}
+
+.daily-change[data-tone="down"] {
+  color: var(--down);
+}
+
+.daily-change[data-tone="flat"] {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.daily-change span {
+  color: currentColor;
+  opacity: 0.62;
+}
+
+.price-chart {
+  width: 100%;
+  min-height: 17rem;
+  margin-top: clamp(1.5rem, 5vh, 3rem);
+  overflow: hidden;
+  filter: drop-shadow(0 0 0.6rem rgb(237 198 82 / 20%));
+}
+
+.chart-state {
+  position: relative;
+  display: grid;
+  place-content: center;
+  min-height: 17rem;
+  margin-top: clamp(1.5rem, 5vh, 3rem);
+  color: var(--muted);
+  text-align: center;
+}
+
+.chart-state::before {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(237 198 82 / 18%),
+    transparent
+  );
+  content: "";
+}
+
+.chart-state p,
+.chart-state small,
+.chart-state button {
+  position: relative;
+}
+
+.chart-state p {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  background: var(--bg);
+  font-size: 0.8rem;
+}
+
+.chart-state small {
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  opacity: 0.72;
+}
+
+.single-point {
+  position: absolute;
+  z-index: 1;
+  top: calc(50% - 2rem);
+  left: calc(50% - 0.25rem);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0.9rem rgb(237 198 82 / 55%);
+}
+
+.chart-state--error button {
+  justify-self: center;
+  margin-top: 0.75rem;
+  border: 1px solid rgb(237 198 82 / 42%);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold);
+  padding: 0.55rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chart-state--error button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.market-footer {
+  align-self: end;
+  padding-top: 1.25rem;
+}
+
+.quote-block--loading {
+  display: grid;
+  gap: 1rem;
+}
+
+.skeleton {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 5%),
+    rgb(255 255 255 / 11%),
+    rgb(255 255 255 / 5%)
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shift 1.5s ease-in-out infinite;
+}
+
+.skeleton--price {
+  width: min(22rem, 72vw);
+  height: clamp(3.25rem, 9vw, 5.5rem);
+}
+
+.skeleton--change {
+  width: 10rem;
+  height: 0.9rem;
+}
+
+@keyframes skeleton-shift {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .market-page {
+    grid-template-rows: auto auto minmax(14rem, 1fr) auto;
+    padding: 1.35rem 1.1rem;
+  }
+
+  .market-header span {
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .latest-price span {
+    display: block;
+    margin: 0.7rem 0 0;
+  }
+
+  .price-chart,
+  .chart-state {
+    min-height: 14rem;
+  }
+
+  .market-footer {
+    align-items: flex-end;
+  }
+
+  .market-footer span:last-child {
+    max-width: 52%;
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

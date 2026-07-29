@@ -1,6 +1,6 @@
 import { JingjinjinChannel } from "./channels/index.js";
+import type { PriceQuote } from "./channels/types.js";
 import {
-  findNearestPreviousPrice,
   shanghaiParts,
   writeSlot,
   type PriceCell,
@@ -8,6 +8,12 @@ import {
 
 /** Directory name under data/ for this channel. */
 export const JINGJINJIN_STORAGE_KEY = "jingjinjin.cn";
+
+export function recordedValue(
+  quote: Pick<PriceQuote, "trade" | "cnyPerGram">,
+): PriceCell {
+  return quote.trade ? quote.cnyPerGram : null;
+}
 
 export async function collectJingjinjin(
   now: Date = new Date(),
@@ -24,17 +30,7 @@ export async function collectJingjinjin(
   const quote = await channel.fetchQuote();
   const { date, hour, slot } = shanghaiParts(now);
 
-  let value: PriceCell;
-  if (quote.trade) {
-    value = quote.cnyPerGram;
-  } else {
-    value = await findNearestPreviousPrice(
-      JINGJINJIN_STORAGE_KEY,
-      date,
-      hour,
-      slot,
-    );
-  }
+  const value = recordedValue(quote);
 
   const filePath = await writeSlot(
     JINGJINJIN_STORAGE_KEY,
@@ -54,29 +50,3 @@ export async function collectJingjinjin(
     cnyPerGram: quote.cnyPerGram,
   };
 }
-
-async function main(): Promise<void> {
-  const result = await collectJingjinjin();
-  console.log(
-    JSON.stringify(
-      {
-        channel: "jingjinjin.cn",
-        storageKey: JINGJINJIN_STORAGE_KEY,
-        date: result.date,
-        hour: result.hour,
-        slot: result.slot,
-        value: result.value,
-        trade: result.trade,
-        cnyPerGram: result.cnyPerGram,
-        path: result.path,
-      },
-      null,
-      2,
-    ),
-  );
-}
-
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});

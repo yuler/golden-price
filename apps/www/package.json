@@ -1,0 +1,31 @@
+{
+  "name": "@golden-price/www",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "tsx scripts/prepare-data.ts",
+    "dev": "astro dev",
+    "prebuild": "tsx scripts/prepare-data.ts",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro sync && astro-check",
+    "test": "tsx --test src/lib/prices.test.ts"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.4.2",
+    "@golden-price/core": "workspace:*",
+    "astro": "^5.7.10",
+    "liveline": "^0.0.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

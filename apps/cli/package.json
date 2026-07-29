@@ -1,0 +1,21 @@
+{
+  "name": "@golden-price/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc --noEmit",
+    "fetch": "tsx src/cli.ts",
+    "collect": "tsx src/collect.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@golden-price/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

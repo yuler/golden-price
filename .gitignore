@@ -1,4 +1,7 @@
 node_modules/
 dist/
+apps/www/dist/
+apps/www/.astro/
+.superpowers/
 *.log
 .DS_Store

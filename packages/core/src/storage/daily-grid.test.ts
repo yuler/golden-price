@@ -25,28 +25,24 @@ async function withTempDataRoot(): Promise<string> {
   return dir;
 }
 
-describe("writeSlot gap fill", () => {
-  it("fills earlier null slots on the same day with the last known price", async () => {
+describe("writeSlot", () => {
+  it("writes value at the given cell only", async () => {
     await withTempDataRoot();
     const key = "test-channel";
     const date = "2026-07-29";
-
-    const prior = createDailyFile("2026-07-28");
-    prior.prices[23][5] = 800;
-    await saveDailyFile(key, prior);
 
     await writeSlot(key, date, 1, 2, 810);
 
     const raw = await readFile(dayFilePath(key, date), "utf8");
     const file = JSON.parse(raw) as DailyPriceFile;
 
-    assert.equal(file.prices[0][0], 800);
-    assert.equal(file.prices[1][1], 800);
+    assert.equal(file.prices[0][0], null);
+    assert.equal(file.prices[1][1], null);
     assert.equal(file.prices[1][2], 810);
     assert.equal(file.prices[1][3], null);
   });
 
-  it("does not overwrite existing non-null slots", async () => {
+  it("overwrites existing cell", async () => {
     await withTempDataRoot();
     const key = "test-channel";
     const date = "2026-07-29";
@@ -57,10 +53,24 @@ describe("writeSlot gap fill", () => {
     const raw = await readFile(dayFilePath(key, date), "utf8");
     const file = JSON.parse(raw) as DailyPriceFile;
 
-    assert.equal(file.prices[0][0], 700);
+    assert.equal(file.prices[0][0], null);
     assert.equal(file.prices[0][1], 700);
-    assert.equal(file.prices[0][2], 700);
+    assert.equal(file.prices[0][2], null);
     assert.equal(file.prices[0][3], 720);
+  });
+
+  it("does not erase an existing quote with a null observation", async () => {
+    await withTempDataRoot();
+    const key = "test-channel";
+    const date = "2026-07-29";
+
+    await writeSlot(key, date, 0, 1, 700);
+    await writeSlot(key, date, 0, 1, null);
+
+    const raw = await readFile(dayFilePath(key, date), "utf8");
+    const file = JSON.parse(raw) as DailyPriceFile;
+
+    assert.equal(file.prices[0][1], 700);
   });
 });
 

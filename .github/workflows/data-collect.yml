@@ -1,8 +1,8 @@
-name: Collect gold prices
+name: Data Collect
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Collect
-        run: pnpm collect
+        run: pnpm cli:collect
 
       - name: Commit data
         uses: stefanzweifel/git-auto-commit-action@v7
