@@ -127,7 +127,7 @@ export async function initDashboard(): Promise<void> {
       fillSelect(channelSelect, [], "");
       fillSelect(dateSelect, [], "");
       setLatest("—", "No data yet");
-      setStatus("Run the collector to populate data/.");
+      setStatus("Run the CLI (`pnpm cli:collect`) to populate data/.");
       return;
     }
 

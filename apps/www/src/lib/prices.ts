@@ -1,4 +1,4 @@
-import type { DailyPriceFile } from "@golden-price/collector-core";
+import type { DailyPriceFile } from "@golden-price/core";
 
 export type { DailyPriceFile };
 

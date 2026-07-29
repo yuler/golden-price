@@ -1,7 +1,7 @@
 import {
   collectJingjinjin,
   JINGJINJIN_STORAGE_KEY,
-} from "@golden-price/collector-core";
+} from "@golden-price/core";
 
 async function main(): Promise<void> {
   const result = await collectJingjinjin();

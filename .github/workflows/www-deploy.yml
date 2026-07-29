@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   workflow_run:
-    workflows: ["Collect gold prices"]
+    workflows: ["Data Sync"]
     types: [completed]
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
         run: pnpm install
 
       - name: Build website
-        run: pnpm build:www
+        run: pnpm www:build
         env:
           BASE_PATH: /golden-price/
 

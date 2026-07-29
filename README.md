@@ -6,17 +6,17 @@ Collect gold prices from multiple channels, store them as daily JSON grids, and 
 
 ```text
 apps/
-  collector/          # CLI entry for scheduled and local collection
+  cli/                # CLI entry for scheduled and local collection
   www/                # Astro static site with intraday charts
 packages/
-  collector-core/     # Channels, storage, and collection logic
+  core/               # Channels, storage, and collection logic
 data/                 # Git-tracked daily price files
 ```
 
 ```mermaid
 flowchart LR
-  Source[Price source] --> Collector[apps/collector]
-  Collector --> Core[packages/collector-core]
+  Source[Price source] --> Cli[apps/cli]
+  Cli --> Core[packages/core]
   Core --> Data[data/]
   Data --> Www[apps/www]
   Www --> Pages[GitHub Pages]
@@ -51,10 +51,12 @@ flowchart LR
 pnpm install
 pnpm test
 pnpm typecheck
-pnpm fetch      # one-off live quote
-pnpm collect    # write current slot to data/
-pnpm dev:www    # local website with copied data/
-pnpm build:www  # production static build
+pnpm cli:dev       # one-off live quote
+pnpm cli:fetch     # same as cli:dev
+pnpm cli:collect   # write current slot to data/
+pnpm cli:build     # typecheck the CLI
+pnpm www:dev       # local website with copied data/
+pnpm www:build     # production static build
 ```
 
 ## Website
@@ -66,12 +68,12 @@ The Astro app in `apps/www` copies `data/` into `public/data/` at build time and
 - latest price for the selected day
 - an intraday line chart (ECharts)
 
-GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` changes or after a successful collect run.
+GitHub Actions deploys the site to GitHub Pages at `/golden-price/` when `main` changes or after a successful Data Sync run.
 
 ## Stack
 
 - **pnpm workspace** — monorepo
-- **TypeScript** — collectors and shared library
+- **TypeScript** — CLI and shared library
 - **Astro** — static site
 - **ECharts** — intraday charts
 - **GitHub Actions** — scheduled collection and Pages deploy

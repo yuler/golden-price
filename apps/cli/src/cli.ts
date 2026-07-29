@@ -1,4 +1,4 @@
-import { JingjinjinChannel } from "@golden-price/collector-core";
+import { JingjinjinChannel } from "@golden-price/core";
 
 async function main(): Promise<void> {
   const channel = new JingjinjinChannel();

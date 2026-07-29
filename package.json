@@ -8,9 +8,11 @@
     "build": "pnpm -r --if-present run build",
     "test": "pnpm -r --if-present run test",
     "typecheck": "pnpm -r run typecheck",
-    "collect": "pnpm --filter @golden-price/collector collect",
-    "fetch": "pnpm --filter @golden-price/collector fetch",
-    "dev:www": "pnpm --filter @golden-price/www dev",
-    "build:www": "pnpm --filter @golden-price/www build"
+    "cli:dev": "pnpm --filter @golden-price/cli dev",
+    "cli:build": "pnpm --filter @golden-price/cli build",
+    "cli:collect": "pnpm --filter @golden-price/cli collect",
+    "cli:fetch": "pnpm --filter @golden-price/cli fetch",
+    "www:dev": "pnpm --filter @golden-price/www dev",
+    "www:build": "pnpm --filter @golden-price/www build"
   }
 }

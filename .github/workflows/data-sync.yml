@@ -1,4 +1,4 @@
-name: Collect gold prices
+name: Data Sync
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  collect:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,7 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Collect
-        run: pnpm collect
+        run: pnpm cli:collect
 
       - name: Commit data
         uses: stefanzweifel/git-auto-commit-action@v7
