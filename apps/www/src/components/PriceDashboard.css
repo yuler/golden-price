@@ -14,8 +14,8 @@
   z-index: -1;
   inset: 0;
   background:
-    radial-gradient(circle at 80% 44%, rgb(210 164 48 / 16%), transparent 38%),
-    radial-gradient(circle at 15% 0%, rgb(255 255 255 / 4%), transparent 31%);
+    radial-gradient(circle at 80% 44%, var(--glow), transparent 38%),
+    radial-gradient(circle at 15% 0%, var(--haze), transparent 31%);
   content: "";
   pointer-events: none;
 }
@@ -32,6 +32,13 @@
   gap: 1rem;
 }
 
+.market-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
 .market-header p {
   margin: 0;
   color: var(--gold);
@@ -44,6 +51,47 @@
 .market-footer {
   color: var(--muted);
   font-size: 0.68rem;
+}
+
+.theme-toggle,
+.share-action {
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold);
+  padding: 0.35rem 0.75rem;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.theme-toggle:focus-visible,
+.share-action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.share-action:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.15rem;
+}
+
+.share-feedback {
+  margin: 0.7rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.share-feedback[data-tone="error"] {
+  color: var(--down);
 }
 
 .quote-block {
@@ -99,7 +147,7 @@
   min-height: 17rem;
   margin-top: clamp(1.5rem, 5vh, 3rem);
   overflow: hidden;
-  filter: drop-shadow(0 0 0.6rem rgb(237 198 82 / 20%));
+  filter: drop-shadow(0 0 0.6rem var(--chart-glow));
 }
 
 .chart-state {
@@ -121,7 +169,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgb(237 198 82 / 18%),
+    var(--chart-rule),
     transparent
   );
   content: "";
@@ -161,7 +209,7 @@
 .chart-state--error button {
   justify-self: center;
   margin-top: 0.75rem;
-  border: 1px solid rgb(237 198 82 / 42%);
+  border: 1px solid var(--control-border);
   border-radius: 999px;
   background: transparent;
   color: var(--gold);
@@ -190,9 +238,9 @@
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgb(255 255 255 / 5%),
-    rgb(255 255 255 / 11%),
-    rgb(255 255 255 / 5%)
+    var(--skeleton-a),
+    var(--skeleton-b),
+    var(--skeleton-a)
   );
   background-size: 200% 100%;
   animation: skeleton-shift 1.5s ease-in-out infinite;
@@ -221,10 +269,14 @@
   }
 
   .market-header span {
-    max-width: 45%;
+    max-width: 42%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .market-header__meta {
+    gap: 0.5rem;
   }
 
   .latest-price span {

@@ -6,6 +6,7 @@ interface PriceChartProps {
   observations: PriceObservation[];
   latestValue: number;
   summary: string;
+  theme?: "light" | "dark";
 }
 
 function useReducedMotion(): boolean {
@@ -33,20 +34,22 @@ export function PriceChart({
   observations,
   latestValue,
   summary,
+  theme = "dark",
 }: PriceChartProps) {
   const reducedMotion = useReducedMotion();
   const windowSeconds = useMemo(() => {
     const first = observations[0]?.time ?? Date.now() / 1000;
     return Math.max(60 * 60, Math.ceil(Date.now() / 1000 - first + 15 * 60));
   }, [observations]);
+  const lineColor = theme === "light" ? "#9a7410" : "#edc652";
 
   return (
     <div className="price-chart" role="img" aria-label={summary}>
       <Liveline
         data={observations}
         value={latestValue}
-        theme="dark"
-        color="#edc652"
+        theme={theme}
+        color={lineColor}
         window={windowSeconds}
         grid
         fill

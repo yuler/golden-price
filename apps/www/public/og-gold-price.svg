@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="42%" r="42%">
+      <stop offset="0%" stop-color="#d2a430" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#d2a430" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#edc652" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#edc652" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#edc652" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#101116"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <text x="96" y="148" fill="#edc652" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="700" letter-spacing="0.18em">黄金 · CNY</text>
+  <text x="96" y="268" fill="#f4f0e6" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="92" font-weight="700" letter-spacing="-0.04em">今日金价</text>
+  <text x="96" y="348" fill="#74777f" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="34" font-weight="500">人民币黄金克价 · 当日走势</text>
+  <rect x="96" y="420" width="520" height="2" fill="url(#line)"/>
+  <text x="96" y="488" fill="#74777f" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="26">每 5 分钟采集 · 上海时间</text>
+  <text x="96" y="540" fill="#edc652" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="600">gold.yuler.dev</text>
+</svg>

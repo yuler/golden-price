@@ -9,6 +9,15 @@ import {
   type DailyPriceFile,
   type DataManifest,
 } from "../lib/prices";
+import {
+  canShareFiles,
+  changeTone,
+  downloadBlob,
+  formatSigned,
+  renderShareCardBlob,
+  shareCardFile,
+  shareCardFilename,
+} from "../lib/share-card";
 import { PriceChart } from "./PriceChart";
 import "./PriceDashboard.css";
 
@@ -23,25 +32,63 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "loaded"; channelId: string; file: DailyPriceFile };
 
+type Theme = "light" | "dark";
+type ShareStatus = "idle" | "busy" | "error";
+
+const THEME_STORAGE_KEY = "gp-theme";
+const THEME_COLORS = {
+  dark: "#101116",
+  light: "#f6f3ea",
+} as const;
+
+const POLL_INTERVAL_MS = 5 * 60 * 1000;
+
 function sourceName(channelId: string): string {
   return channelId === "jingjinjin.cn" ? "京金金" : channelId;
 }
 
-function formatSigned(value: number): string {
-  if (value > 0) return `+${value.toFixed(2)}`;
-  return value.toFixed(2);
+function readTheme(): Theme {
+  if (typeof document === "undefined") return "dark";
+  const attr = document.documentElement.dataset.theme;
+  if (attr === "light" || attr === "dark") return attr;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
-function changeTone(value: number): "up" | "down" | "flat" {
-  if (value > 0) return "up";
-  if (value < 0) return "down";
-  return "flat";
+function applyTheme(theme: Theme): void {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const meta = document.getElementById("theme-color-meta");
+  if (meta) meta.setAttribute("content", THEME_COLORS[theme]);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore quota / private-mode failures.
+  }
 }
 
-const POLL_INTERVAL_MS = 5 * 60 * 1000;
+function useTheme(): [Theme, () => void] {
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  useEffect(() => {
+    setTheme(readTheme());
+  }, []);
+
+  const toggle = useCallback(() => {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      return next;
+    });
+  }, []);
+
+  return [theme, toggle];
+}
 
 export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
+  const [theme, toggleTheme] = useTheme();
   const latestRequestId = useRef(0);
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
@@ -115,7 +162,11 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "loading") {
     return (
       <main className="market-page" aria-busy="true" aria-live="polite">
-        <MarketHeader source="数据加载中" />
+        <MarketHeader
+          source="数据加载中"
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
         <section className="quote-block quote-block--loading">
           <span className="skeleton skeleton--price" />
           <span className="skeleton skeleton--change" />
@@ -131,7 +182,11 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "error") {
     return (
       <main className="market-page" aria-live="assertive">
-        <MarketHeader source="数据源：京金金" />
+        <MarketHeader
+          source="数据源：京金金"
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
         <div className="chart-state chart-state--error">
           <p>{loadState.message}</p>
           <button type="button" onClick={() => void load()}>
@@ -146,7 +201,11 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "empty") {
     return (
       <main className="market-page" aria-live="polite">
-        <MarketHeader source="数据源：京金金" />
+        <MarketHeader
+          source="数据源：京金金"
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
         <div className="chart-state">
           <p>今日暂无报价</p>
         </div>
@@ -159,6 +218,8 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
     <LoadedDashboard
       channelId={loadState.channelId}
       file={loadState.file}
+      theme={theme}
+      onToggleTheme={toggleTheme}
     />
   );
 }
@@ -166,15 +227,20 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
 function LoadedDashboard({
   channelId,
   file,
+  theme,
+  onToggleTheme,
 }: {
   channelId: string;
   file: DailyPriceFile;
+  theme: Theme;
+  onToggleTheme: () => void;
 }) {
   const observations = useMemo(() => validPriceObservations(file), [file]);
   const state = classifyPriceData(file, shanghaiDate());
   const latest = observations.at(-1);
   const change = state === "ready" ? calculateDailyChange(observations) : null;
   const tone = change ? changeTone(change.absolute) : "flat";
+  const source = `数据源：${sourceName(channelId)}`;
   const updated = latest
     ? `${state === "stale" ? `${file.date} ` : ""}${latest.label} 更新`
     : "暂无更新时间";
@@ -188,10 +254,77 @@ function LoadedDashboard({
   const summary = latest
     ? `黄金最新价格 ${latest.value.toFixed(2)} 元每克${changeSummary}，${updated}`
     : "今日暂无黄金报价";
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
+  const [shareMessage, setShareMessage] = useState("");
+  const [canShare, setCanShare] = useState(false);
+
+  useEffect(() => {
+    const probe = new File([new Uint8Array([137, 80, 78, 71])], "probe.png", {
+      type: "image/png",
+    });
+    setCanShare(canShareFiles(probe));
+  }, []);
+
+  const exportCard = useCallback(async () => {
+    if (!latest) throw new Error("暂无报价可分享");
+    return renderShareCardBlob({
+      price: latest.value,
+      change,
+      updatedLabel: updated,
+      date: file.date,
+      source,
+      observations,
+    });
+  }, [change, file.date, latest, observations, source, updated]);
+
+  const handleDownload = useCallback(async () => {
+    if (!latest || shareStatus === "busy") return;
+    setShareStatus("busy");
+    setShareMessage("");
+    try {
+      const blob = await exportCard();
+      downloadBlob(blob, shareCardFilename(file.date));
+      setShareStatus("idle");
+    } catch (error) {
+      console.error(error);
+      setShareStatus("error");
+      setShareMessage(error instanceof Error ? error.message : "下载失败");
+    }
+  }, [exportCard, file.date, latest, shareStatus]);
+
+  const handleShare = useCallback(async () => {
+    if (!latest || shareStatus === "busy") return;
+    setShareStatus("busy");
+    setShareMessage("");
+    try {
+      const blob = await exportCard();
+      const fileName = shareCardFilename(file.date);
+      const cardFile = new File([blob], fileName, { type: "image/png" });
+      const shareText = `今日金价 ${latest.value.toFixed(2)} 元/克`;
+      const result = await shareCardFile(cardFile, "今日金价", shareText);
+      if (result === "unsupported") {
+        downloadBlob(blob, fileName);
+        setShareMessage("当前浏览器不支持直接分享，已改为下载");
+      } else if (result === "failed") {
+        setShareStatus("error");
+        setShareMessage("分享失败，请改用下载");
+        return;
+      }
+      setShareStatus("idle");
+    } catch (error) {
+      console.error(error);
+      setShareStatus("error");
+      setShareMessage(error instanceof Error ? error.message : "分享失败");
+    }
+  }, [exportCard, file.date, latest, shareStatus]);
 
   return (
     <main className="market-page" aria-live="polite">
-      <MarketHeader source={`数据源：${sourceName(channelId)}`} />
+      <MarketHeader
+        source={source}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+      />
 
       {latest ? (
         <section className="quote-block" aria-label={summary}>
@@ -215,6 +348,35 @@ function LoadedDashboard({
                 : "今日涨跌需至少两个报价"}
             </p>
           )}
+          <div className="share-actions">
+            <button
+              type="button"
+              className="share-action"
+              onClick={() => void handleDownload()}
+              disabled={shareStatus === "busy"}
+            >
+              {shareStatus === "busy" ? "生成中…" : "下载卡片"}
+            </button>
+            {canShare ? (
+              <button
+                type="button"
+                className="share-action"
+                onClick={() => void handleShare()}
+                disabled={shareStatus === "busy"}
+              >
+                分享
+              </button>
+            ) : null}
+          </div>
+          {shareMessage ? (
+            <p
+              className="share-feedback"
+              role="status"
+              data-tone={shareStatus === "error" ? "error" : "info"}
+            >
+              {shareMessage}
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -223,6 +385,7 @@ function LoadedDashboard({
           observations={observations}
           latestValue={latest.value}
           summary={summary}
+          theme={theme}
         />
       ) : (
         <div className="chart-state">
@@ -245,11 +408,30 @@ function LoadedDashboard({
   );
 }
 
-function MarketHeader({ source }: { source: string }) {
+function MarketHeader({
+  source,
+  theme,
+  onToggleTheme,
+}: {
+  source: string;
+  theme: Theme;
+  onToggleTheme: () => void;
+}) {
   return (
     <header className="market-header">
       <p>黄金 · CNY</p>
-      <span>{source}</span>
+      <div className="market-header__meta">
+        <span>{source}</span>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={onToggleTheme}
+          aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+          title={theme === "dark" ? "浅色" : "深色"}
+        >
+          {theme === "dark" ? "浅色" : "深色"}
+        </button>
+      </div>
     </header>
   );
 }
