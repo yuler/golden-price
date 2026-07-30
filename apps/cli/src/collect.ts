@@ -3,6 +3,9 @@ import {
   getDefaultStore,
   JINGJINJIN_STORAGE_KEY,
 } from "@golden-price/core";
+import { loadRepoEnv } from "@golden-price/node-env";
+
+loadRepoEnv();
 
 async function main(): Promise<void> {
   const result = await collectJingjinjin(getDefaultStore());

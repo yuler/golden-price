@@ -14,9 +14,11 @@ import {
   NodeFsDailyPriceStore,
   type DailyPriceStore,
 } from "@golden-price/core";
+import { loadRepoEnv, REPO_ROOT } from "@golden-price/node-env";
+
+loadRepoEnv();
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const REPO_ROOT = path.resolve(APP_ROOT, "../..");
 const DATA_ROOT = path.join(REPO_ROOT, "data");
 const BUCKET = "golden-price-data";
 
