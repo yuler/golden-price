@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   calculateDailyChange,
   classifyPriceData,
@@ -38,11 +38,18 @@ function changeTone(value: number): "up" | "down" | "flat" {
   return "flat";
 }
 
+const POLL_INTERVAL_MS = 5 * 60 * 1000;
+
 export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
+  const latestRequestId = useRef(0);
 
-  const load = useCallback(async () => {
-    setLoadState({ kind: "loading" });
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    const requestId = ++latestRequestId.current;
+    if (!silent) {
+      setLoadState({ kind: "loading" });
+    }
     try {
       const manifestResponse = await fetch(manifestUrl(dataBase), {
         cache: "no-store",
@@ -54,7 +61,9 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
       const manifest = (await manifestResponse.json()) as DataManifest;
       const channel = manifest.channels[0];
       if (!channel?.latestDate) {
-        setLoadState({ kind: "empty" });
+        if (!silent && requestId === latestRequestId.current) {
+          setLoadState({ kind: "empty" });
+        }
         return;
       }
 
@@ -73,21 +82,34 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
         console.error("Invalid daily price file", error);
         throw new Error("报价数据格式无效");
       }
-      setLoadState({
-        kind: "loaded",
-        channelId: channel.id,
-        file,
-      });
+      if (requestId === latestRequestId.current) {
+        setLoadState({
+          kind: "loaded",
+          channelId: channel.id,
+          file,
+        });
+      }
     } catch (error) {
-      setLoadState({
-        kind: "error",
-        message: error instanceof Error ? error.message : "报价加载失败",
+      if (requestId !== latestRequestId.current) return;
+      setLoadState((prev) => {
+        if (silent) return prev;
+        return {
+          kind: "error",
+          message: error instanceof Error ? error.message : "报价加载失败",
+        };
       });
     }
   }, [dataBase]);
 
   useEffect(() => {
     void load();
+    const id = window.setInterval(() => {
+      void load({ silent: true });
+    }, POLL_INTERVAL_MS);
+    return () => {
+      window.clearInterval(id);
+      latestRequestId.current += 1;
+    };
   }, [load]);
 
   if (loadState.kind === "loading") {
