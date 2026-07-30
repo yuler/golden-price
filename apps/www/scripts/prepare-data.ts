@@ -6,7 +6,9 @@ import { loadRepoEnv, REPO_ROOT } from "@golden-price/node-env";
 loadRepoEnv();
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DATA_ROOT = path.join(REPO_ROOT, "data");
+const DATA_ROOT = process.env.GOLDEN_PRICE_DATA_ROOT
+  ? path.resolve(process.env.GOLDEN_PRICE_DATA_ROOT)
+  : path.join(REPO_ROOT, "data");
 const OUTPUT_ROOT = path.join(APP_ROOT, "public", "data");
 
 interface ChannelManifest {
