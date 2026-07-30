@@ -1,0 +1,30 @@
+{
+  "date": "2026-07-29",
+  "unit": "CNY/g",
+  "prices": [
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,878.9,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,879.2,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,876.6,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,873,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,871.8,null,null,null,null],
+    [null,null,null,null,null,null,null,null,null,null,null,null]
+  ]
+}
