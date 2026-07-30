@@ -1,9 +1,11 @@
 import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadRepoEnv, REPO_ROOT } from "@golden-price/node-env";
+
+loadRepoEnv();
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const REPO_ROOT = path.resolve(APP_ROOT, "../..");
 const DATA_ROOT = path.join(REPO_ROOT, "data");
 const OUTPUT_ROOT = path.join(APP_ROOT, "public", "data");
 

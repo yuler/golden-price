@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "sh -c 'if [ -f ../../.env ]; then exec wrangler dev --env-file ../../.env; else exec wrangler dev; fi'",
+    "deploy": "sh -c 'if [ -f ../../.env ]; then exec wrangler deploy --env-file ../../.env; else exec wrangler deploy; fi'",
     "typecheck": "tsc --noEmit",
     "migrate:r2": "tsx scripts/migrate-local-data.ts"
   },
   "dependencies": {
-    "@golden-price/core": "workspace:*"
+    "@golden-price/core": "workspace:*",
+    "@golden-price/node-env": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260730.1",

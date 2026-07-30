@@ -1,10 +1,8 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
+import { loadRepoEnv, REPO_ROOT } from "@golden-price/node-env";
 
-const appRoot = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(appRoot, "../..");
+loadRepoEnv();
 
 /** GitHub Actions injects "" for unset vars; treat blank like missing. */
 function envOr(name, fallback) {
@@ -18,7 +16,7 @@ const site = envOr("SITE", "https://gold.yuler.dev");
 export default defineConfig({
   base,
   site,
-  envDir: repoRoot,
+  envDir: REPO_ROOT,
   output: "static",
   integrations: [react()],
 });

@@ -1,4 +1,7 @@
 import { JingjinjinChannel } from "@golden-price/core";
+import { loadRepoEnv } from "@golden-price/node-env";
+
+loadRepoEnv();
 
 async function main(): Promise<void> {
   const channel = new JingjinjinChannel();
