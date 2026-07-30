@@ -35,9 +35,9 @@ jobs:
       - name: Build website
         run: pnpm www:build
         env:
-          BASE_PATH: ${{ vars.BASE_PATH }}
-          SITE: ${{ vars.SITE }}
-          PUBLIC_DATA_BASE_URL: ${{ vars.PUBLIC_DATA_BASE_URL }}
+          BASE_PATH: ${{ vars.BASE_PATH || '/golden-price/' }}
+          SITE: ${{ vars.SITE || 'https://gold.yuler.dev' }}
+          PUBLIC_DATA_BASE_URL: ${{ vars.PUBLIC_DATA_BASE_URL || 'https://golden-price.is-yuler.workers.dev' }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

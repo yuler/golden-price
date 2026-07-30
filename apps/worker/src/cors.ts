@@ -1,13 +1,16 @@
 const ALLOWED_ORIGINS = new Set([
+  "https://gold.yuler.dev",
   "https://yuler.github.io",
   "http://localhost:4321",
   "http://127.0.0.1:4321",
 ]);
 
+const DEFAULT_ORIGIN = "https://gold.yuler.dev";
+
 export function corsHeaders(request: Request): HeadersInit {
   const origin = request.headers.get("Origin");
   const allowOrigin =
-    origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://yuler.github.io";
+    origin && ALLOWED_ORIGINS.has(origin) ? origin : DEFAULT_ORIGIN;
 
   return {
     "Access-Control-Allow-Origin": allowOrigin,

@@ -6,8 +6,14 @@ import { defineConfig } from "astro/config";
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(appRoot, "../..");
 
-const base = process.env.BASE_PATH ?? "/";
-const site = process.env.SITE ?? "https://gold.yuler.dev";
+/** GitHub Actions injects "" for unset vars; treat blank like missing. */
+function envOr(name, fallback) {
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
+const base = envOr("BASE_PATH", "/");
+const site = envOr("SITE", "https://gold.yuler.dev");
 
 export default defineConfig({
   base,
