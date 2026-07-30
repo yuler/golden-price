@@ -17,7 +17,6 @@ data/
 
 # Tooling / local notes
 .superpowers/
-docs/
 .wrangler/
 .dev.vars
 
