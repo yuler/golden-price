@@ -4,6 +4,10 @@ compatibility_date = "2026-07-29"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+routes = [
+  { pattern = "api.gold.yuler.dev", custom_domain = true }
+]
+
 [[r2_buckets]]
 binding = "GOLDEN_PRICE_DATA"
 bucket_name = "golden-price-data"

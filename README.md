@@ -72,15 +72,15 @@ pnpm worker:migrate # upload local data/ to remote R2 (one-time)
 2. Create the R2 bucket if needed (first deploy may prompt), binding `GOLDEN_PRICE_DATA` → `golden-price-data`
 3. Deploy: `pnpm worker:deploy`
 4. Migrate existing local files (optional): `pnpm worker:migrate`
-5. Note the Worker URL (e.g. `https://golden-price.<account>.workers.dev`)
+5. Bind custom domain `api.gold.yuler.dev` (configured in `wrangler.toml`)
 
 Cron runs every 5 minutes (`*/5 * * * *`), writes the current Shanghai slot into R2, and refreshes `manifest.json`.
 
-HTTP:
+HTTP (production: `https://api.gold.yuler.dev`):
 
 - `GET /data/manifest.json`
 - `GET /data/:channel/:date.json`
-- CORS allows `https://yuler.github.io` and local Astro (`http://localhost:4321`)
+- CORS allows `https://gold.yuler.dev`, `https://yuler.github.io`, and local Astro (`http://localhost:4321`)
 
 ## Website
 
