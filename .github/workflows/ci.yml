@@ -43,4 +43,4 @@ jobs:
         env:
           PUBLIC_DATA_BASE_URL: ${{ vars.PUBLIC_DATA_BASE_URL || 'https://golden-price.is-yuler.workers.dev' }}
           SITE: ${{ vars.SITE || 'https://gold.yuler.dev' }}
-          BASE_PATH: ${{ vars.BASE_PATH || '/golden-price/' }}
+          BASE_PATH: ${{ vars.BASE_PATH || '/' }}
