@@ -1,9 +1,12 @@
 ---
+import { pwaInfo } from "virtual:pwa-info";
+
 interface Props {
   title: string;
 }
 
 const { title } = Astro.props;
+const assetBase = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
@@ -15,8 +18,17 @@ const { title } = Astro.props;
       name="description"
       content="每五分钟采集一次的人民币黄金克价与当日走势。"
     />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#101116" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <link rel="icon" type="image/svg+xml" href={`${assetBase}favicon.svg`} />
+    <link rel="apple-touch-icon" href={`${assetBase}apple-touch-icon.png`} />
+    {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
     <title>{title}</title>
+    <script src="../pwa.ts"></script>
   </head>
   <body>
     <slot />
