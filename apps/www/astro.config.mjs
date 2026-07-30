@@ -53,7 +53,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: base === "/" ? "/" : base,
+        navigateFallback: base === "/" ? "/" : `${base}/`,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
       },
       experimental: {
