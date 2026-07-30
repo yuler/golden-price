@@ -113,12 +113,22 @@ export function latestPrice(
   return latest ? { time: latest.label, value: latest.value } : null;
 }
 
-export function dataUrl(base: string, channelId: string, date: string): string {
-  const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+export function dataUrl(dataBase: string, channelId: string, date: string): string {
+  const normalizedBase = dataBase.endsWith("/") ? dataBase : `${dataBase}/`;
   return `${normalizedBase}data/${encodeURIComponent(channelId)}/${date}.json`;
 }
 
-export function manifestUrl(base: string): string {
-  const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+export function manifestUrl(dataBase: string): string {
+  const normalizedBase = dataBase.endsWith("/") ? dataBase : `${dataBase}/`;
   return `${normalizedBase}data/manifest.json`;
+}
+
+/** Prefer remote worker URL; fall back to the site base for local static data. */
+export function resolveDataBase(
+  siteBase: string,
+  publicDataBaseUrl?: string | undefined,
+): string {
+  const remote = publicDataBaseUrl?.trim();
+  if (remote) return remote.endsWith("/") ? remote : `${remote}/`;
+  return siteBase.endsWith("/") ? siteBase : `${siteBase}/`;
 }

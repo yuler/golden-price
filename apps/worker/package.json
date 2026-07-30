@@ -1,0 +1,22 @@
+{
+  "name": "@golden-price/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "migrate:r2": "tsx scripts/migrate-local-data.ts"
+  },
+  "dependencies": {
+    "@golden-price/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260730.1",
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "wrangler": "^4.115.0"
+  }
+}

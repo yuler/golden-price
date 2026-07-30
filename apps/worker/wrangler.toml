@@ -1,0 +1,13 @@
+name = "golden-price"
+main = "src/index.ts"
+compatibility_date = "2026-07-29"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[[r2_buckets]]
+binding = "GOLDEN_PRICE_DATA"
+bucket_name = "golden-price-data"
+preview_bucket_name = "golden-price-data-preview"
+
+[triggers]
+crons = ["*/5 * * * *"]

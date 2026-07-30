@@ -26,6 +26,14 @@ async function listJsonDates(channelDir: string): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  const remoteDataBase = process.env.PUBLIC_DATA_BASE_URL?.trim();
+  if (remoteDataBase) {
+    console.log(
+      "PUBLIC_DATA_BASE_URL is set; skipping local data copy for static build.",
+    );
+    return;
+  }
+
   await rm(OUTPUT_ROOT, { recursive: true, force: true });
   await mkdir(OUTPUT_ROOT, { recursive: true });
 
@@ -35,6 +43,11 @@ async function main(): Promise<void> {
   try {
     channelEntries = await readdir(DATA_ROOT);
   } catch {
+    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+      throw new Error(
+        "No local data/ and PUBLIC_DATA_BASE_URL is unset. Set PUBLIC_DATA_BASE_URL to the Worker origin for CI/production builds.",
+      );
+    }
     await writeFile(
       path.join(OUTPUT_ROOT, "manifest.json"),
       `${JSON.stringify({ channels: [] } satisfies DataManifest, null, 2)}\n`,

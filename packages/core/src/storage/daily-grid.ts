@@ -1,6 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import type { DailyPriceStore } from "./types.js";
 
 export const HOURS = 24;
 export const SLOTS_PER_HOUR = 12;
@@ -21,17 +19,6 @@ export interface ShanghaiParts {
   hour: number;
   minute: number;
   slot: number;
-}
-
-const REPO_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../../..",
-);
-
-function dataRoot(): string {
-  return process.env.GOLDEN_PRICE_DATA_ROOT
-    ? path.resolve(process.env.GOLDEN_PRICE_DATA_ROOT)
-    : path.join(REPO_ROOT, "data");
 }
 
 /** Empty 24×12 grid of nulls. */
@@ -70,52 +57,38 @@ export function shanghaiParts(now: Date = new Date()): ShanghaiParts {
   };
 }
 
-export function dayFilePath(storageKey: string, date: string): string {
-  return path.join(dataRoot(), storageKey, `${date}.json`);
-}
-
 export function createDailyFile(date: string): DailyPriceFile {
   return { date, unit: UNIT, prices: emptyGrid() };
 }
 
-export async function loadDailyFile(
-  storageKey: string,
-  date: string,
-): Promise<DailyPriceFile | null> {
-  const filePath = dayFilePath(storageKey, date);
-  try {
-    const raw = await readFile(filePath, "utf8");
-    const parsed = JSON.parse(raw) as DailyPriceFile;
-    validateDailyFile(parsed, date);
-    return parsed;
-  } catch (error: unknown) {
-    if (isNotFound(error)) return null;
-    throw error;
-  }
-}
-
 export async function loadOrCreateDailyFile(
+  store: DailyPriceStore,
   storageKey: string,
   date: string,
 ): Promise<DailyPriceFile> {
-  const existing = await loadDailyFile(storageKey, date);
+  const existing = await store.load(storageKey, date);
   return existing ?? createDailyFile(date);
 }
 
+export async function loadDailyFile(
+  store: DailyPriceStore,
+  storageKey: string,
+  date: string,
+): Promise<DailyPriceFile | null> {
+  return store.load(storageKey, date);
+}
+
 export async function saveDailyFile(
+  store: DailyPriceStore,
   storageKey: string,
   file: DailyPriceFile,
 ): Promise<string> {
-  const filePath = dayFilePath(storageKey, file.date);
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const rows = file.prices.map((row) => `    ${JSON.stringify(row)}`);
-  const body = `{\n  "date": ${JSON.stringify(file.date)},\n  "unit": ${JSON.stringify(file.unit)},\n  "prices": [\n${rows.join(",\n")}\n  ]\n}\n`;
-  await writeFile(filePath, body, "utf8");
-  return filePath;
+  return store.save(storageKey, file);
 }
 
 /** Write a finite value without erasing an existing quote with null. */
 export async function writeSlot(
+  store: DailyPriceStore,
   storageKey: string,
   date: string,
   hour: number,
@@ -123,11 +96,11 @@ export async function writeSlot(
   value: PriceCell,
 ): Promise<string> {
   assertHourSlot(hour, slot);
-  const file = await loadOrCreateDailyFile(storageKey, date);
+  const file = await loadOrCreateDailyFile(store, storageKey, date);
   if (typeof value === "number" && Number.isFinite(value)) {
     file.prices[hour][slot] = value;
   }
-  return saveDailyFile(storageKey, file);
+  return store.save(storageKey, file);
 }
 
 /**
@@ -135,6 +108,7 @@ export async function writeSlot(
  * scanning the same day then previous days (up to LOOKBACK_DAYS).
  */
 export async function findNearestPreviousPrice(
+  store: DailyPriceStore,
   storageKey: string,
   date: string,
   hour: number,
@@ -143,7 +117,7 @@ export async function findNearestPreviousPrice(
 ): Promise<number | null> {
   assertHourSlot(hour, slot);
 
-  const sameDay = await loadDailyFile(storageKey, date);
+  const sameDay = await store.load(storageKey, date);
   if (sameDay) {
     const fromSame = scanBackward(sameDay.prices, hour, slot);
     if (fromSame !== null) return fromSame;
@@ -152,7 +126,7 @@ export async function findNearestPreviousPrice(
   let cursor = date;
   for (let i = 0; i < lookbackDays; i++) {
     cursor = previousDate(cursor);
-    const file = await loadDailyFile(storageKey, cursor);
+    const file = await store.load(storageKey, cursor);
     if (!file) continue;
     const found = scanBackward(file.prices, HOURS - 1, SLOTS_PER_HOUR);
     if (found !== null) return found;
@@ -189,7 +163,10 @@ export function previousDate(date: string): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-function validateDailyFile(file: DailyPriceFile, expectedDate: string): void {
+export function validateDailyFile(
+  file: DailyPriceFile,
+  expectedDate: string,
+): void {
   if (file.date !== expectedDate) {
     throw new Error(
       `Daily file date mismatch: expected ${expectedDate}, got ${file.date}`,
@@ -213,13 +190,4 @@ function assertHourSlot(hour: number, slot: number): void {
   if (!Number.isInteger(slot) || slot < 0 || slot >= SLOTS_PER_HOUR) {
     throw new Error(`Invalid slot: ${slot}`);
   }
-}
-
-function isNotFound(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: string }).code === "ENOENT"
-  );
 }

@@ -13,6 +13,9 @@
     "cli:collect": "pnpm --filter @golden-price/cli collect",
     "cli:fetch": "pnpm --filter @golden-price/cli fetch",
     "www:dev": "pnpm --filter @golden-price/www dev",
-    "www:build": "pnpm --filter @golden-price/www build"
+    "www:build": "pnpm --filter @golden-price/www build",
+    "worker:dev": "pnpm --filter @golden-price/worker dev",
+    "worker:deploy": "pnpm --filter @golden-price/worker run deploy",
+    "worker:migrate": "pnpm --filter @golden-price/worker migrate:r2"
   }
 }
