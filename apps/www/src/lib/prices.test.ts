@@ -6,6 +6,7 @@ import {
   classifyPriceData,
   dataUrl,
   manifestUrl,
+  resolveDataBase,
   shanghaiDate,
   validPriceObservations,
 } from "./prices";
@@ -151,5 +152,26 @@ describe("data URLs", () => {
       dataUrl("/golden-price", "jingjinjin.cn", "2026-07-29"),
       "/golden-price/data/jingjinjin.cn/2026-07-29.json",
     );
+  });
+
+  it("builds absolute worker URLs", () => {
+    assert.equal(
+      manifestUrl("https://golden-price.example.workers.dev/"),
+      "https://golden-price.example.workers.dev/data/manifest.json",
+    );
+  });
+});
+
+describe("resolveDataBase", () => {
+  it("prefers PUBLIC_DATA_BASE_URL when set", () => {
+    assert.equal(
+      resolveDataBase("/golden-price/", "https://golden-price.example.workers.dev"),
+      "https://golden-price.example.workers.dev/",
+    );
+  });
+
+  it("falls back to the site base", () => {
+    assert.equal(resolveDataBase("/golden-price/", undefined), "/golden-price/");
+    assert.equal(resolveDataBase("/golden-price/", "  "), "/golden-price/");
   });
 });

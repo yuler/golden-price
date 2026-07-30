@@ -9,9 +9,4 @@ export {
 } from "./collect.js";
 export * from "./storage/daily-grid.js";
 export { formatDailyFile } from "./storage/format.js";
-export {
-  NodeFsDailyPriceStore,
-  getDefaultStore,
-  resetDefaultStore,
-} from "./storage/node-fs-store.js";
 export type { DailyPriceStore } from "./storage/types.js";

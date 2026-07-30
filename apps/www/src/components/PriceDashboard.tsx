@@ -13,7 +13,8 @@ import { PriceChart } from "./PriceChart";
 import "./PriceDashboard.css";
 
 interface PriceDashboardProps {
-  base: string;
+  /** Data API base (Worker URL or same-origin site base). */
+  dataBase: string;
 }
 
 type LoadState =
@@ -37,13 +38,13 @@ function changeTone(value: number): "up" | "down" | "flat" {
   return "flat";
 }
 
-export function PriceDashboard({ base }: PriceDashboardProps) {
+export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
 
   const load = useCallback(async () => {
     setLoadState({ kind: "loading" });
     try {
-      const manifestResponse = await fetch(manifestUrl(base), {
+      const manifestResponse = await fetch(manifestUrl(dataBase), {
         cache: "no-store",
       });
       if (!manifestResponse.ok) {
@@ -58,7 +59,7 @@ export function PriceDashboard({ base }: PriceDashboardProps) {
       }
 
       const dailyResponse = await fetch(
-        dataUrl(base, channel.id, channel.latestDate),
+        dataUrl(dataBase, channel.id, channel.latestDate),
         { cache: "no-store" },
       );
       if (!dailyResponse.ok) {
@@ -83,7 +84,7 @@ export function PriceDashboard({ base }: PriceDashboardProps) {
         message: error instanceof Error ? error.message : "报价加载失败",
       });
     }
-  }, [base]);
+  }, [dataBase]);
 
   useEffect(() => {
     void load();

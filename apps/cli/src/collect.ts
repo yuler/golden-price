@@ -1,10 +1,11 @@
 import {
   collectJingjinjin,
+  getDefaultStore,
   JINGJINJIN_STORAGE_KEY,
 } from "@golden-price/core";
 
 async function main(): Promise<void> {
-  const result = await collectJingjinjin();
+  const result = await collectJingjinjin(getDefaultStore());
   console.log(
     JSON.stringify(
       {

@@ -1,4 +1,3 @@
-import WebSocket from "ws";
 import type { PriceChannel, PriceQuote } from "../types.js";
 import {
   decodeJingjinjinBody,
@@ -17,11 +16,14 @@ export interface JingjinjinChannelOptions {
   passcode?: string;
   /** Max time to wait for a usable originhuangjin quote. */
   timeoutMs?: number;
+  /** Override WebSocket construction (tests / special runtimes). */
+  openSocket?: (url: string) => WebSocket;
 }
 
 /**
  * jingjinjin.cn UF Socket (STOMP over WebSocket) channel.
  * Quote: originhuangjin.prices.originhuangjin.huigou (already CNY/g).
+ * Uses the runtime global WebSocket (Node 22+, Cloudflare Workers, browsers).
  */
 export class JingjinjinChannel implements PriceChannel {
   readonly id = "jingjinjin.cn";
@@ -31,6 +33,7 @@ export class JingjinjinChannel implements PriceChannel {
   private readonly login: string;
   private readonly passcode: string;
   private readonly timeoutMs: number;
+  private readonly openSocket: (url: string) => WebSocket;
 
   constructor(options: JingjinjinChannelOptions = {}) {
     this.url = options.url ?? DEFAULT_URL;
@@ -38,6 +41,7 @@ export class JingjinjinChannel implements PriceChannel {
     this.login = options.login ?? "username";
     this.passcode = options.passcode ?? "password";
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.openSocket = options.openSocket ?? defaultOpenSocket;
   }
 
   fetchQuote(signal?: AbortSignal): Promise<PriceQuote> {
@@ -48,7 +52,7 @@ export class JingjinjinChannel implements PriceChannel {
     return new Promise<PriceQuote>((resolve, reject) => {
       let settled = false;
       let state: Record<string, unknown> = {};
-      const ws = new WebSocket(this.url);
+      const ws = this.openSocket(this.url);
 
       const cleanup = () => {
         signal?.removeEventListener("abort", onAbort);
@@ -89,7 +93,7 @@ export class JingjinjinChannel implements PriceChannel {
         );
       }, this.timeoutMs);
 
-      ws.on("open", () => {
+      ws.addEventListener("open", () => {
         ws.send(
           [
             "CONNECT",
@@ -103,8 +107,8 @@ export class JingjinjinChannel implements PriceChannel {
         );
       });
 
-      ws.on("message", (data) => {
-        const text = Buffer.isBuffer(data) ? data.toString("utf8") : String(data);
+      ws.addEventListener("message", (event) => {
+        const text = messageToText(event.data);
 
         if (text.startsWith("CONNECTED")) {
           ws.send(
@@ -137,7 +141,11 @@ export class JingjinjinChannel implements PriceChannel {
           return;
         }
 
-        if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+        if (
+          typeof payload !== "object" ||
+          payload === null ||
+          Array.isArray(payload)
+        ) {
           return;
         }
 
@@ -152,17 +160,42 @@ export class JingjinjinChannel implements PriceChannel {
         });
       });
 
-      ws.on("error", (error) => {
-        finishErr(error);
+      ws.addEventListener("error", () => {
+        finishErr(new Error("WebSocket error"));
       });
 
-      ws.on("close", () => {
+      ws.addEventListener("close", () => {
         if (!settled) {
           finishErr(new Error("WebSocket closed before a quote was received"));
         }
       });
     });
   }
+}
+
+function defaultOpenSocket(url: string): WebSocket {
+  if (typeof WebSocket === "undefined") {
+    throw new Error(
+      "Global WebSocket is unavailable; pass JingjinjinChannelOptions.openSocket",
+    );
+  }
+  return new WebSocket(url);
+}
+
+function messageToText(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (data instanceof ArrayBuffer) {
+    return new TextDecoder().decode(data);
+  }
+  if (ArrayBuffer.isView(data)) {
+    const bytes = new Uint8Array(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return new TextDecoder().decode(bytes);
+  }
+  return String(data);
 }
 
 function extractStompBody(frame: string): string | null {

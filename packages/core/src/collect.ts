@@ -5,6 +5,7 @@ import {
   writeSlot,
   type PriceCell,
 } from "./storage/daily-grid.js";
+import type { DailyPriceStore } from "./storage/types.js";
 
 /** Directory name under data/ for this channel. */
 export const JINGJINJIN_STORAGE_KEY = "jingjinjin.cn";
@@ -16,6 +17,7 @@ export function recordedValue(
 }
 
 export async function collectJingjinjin(
+  store: DailyPriceStore,
   now: Date = new Date(),
 ): Promise<{
   path: string;
@@ -33,6 +35,7 @@ export async function collectJingjinjin(
   const value = recordedValue(quote);
 
   const filePath = await writeSlot(
+    store,
     JINGJINJIN_STORAGE_KEY,
     date,
     hour,

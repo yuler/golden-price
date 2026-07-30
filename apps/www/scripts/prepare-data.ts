@@ -26,6 +26,13 @@ async function listJsonDates(channelDir: string): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  if (process.env.PUBLIC_DATA_BASE_URL?.trim()) {
+    console.log(
+      "PUBLIC_DATA_BASE_URL is set; skipping local data copy for static build.",
+    );
+    return;
+  }
+
   await rm(OUTPUT_ROOT, { recursive: true, force: true });
   await mkdir(OUTPUT_ROOT, { recursive: true });
 
