@@ -87,7 +87,7 @@ HTTP:
 The Astro app in `apps/www` loads data at runtime:
 
 - Locally (no `PUBLIC_DATA_BASE_URL`): copies `data/` into `public/data/` at build/dev time
-- Production: set repo Actions variable `PUBLIC_DATA_BASE_URL` to the Worker origin (trailing slash optional). The dashboard fetches the Worker data API.
+- Production: set repo Actions variable `PUBLIC_DATA_BASE_URL` to the Worker origin (trailing slash optional). The dashboard fetches the Worker data API. Also set `SITE` and `BASE_PATH` for the Pages build. Local values live in `.env` (see `.env.example`).
 
 GitHub Actions deploys the site to GitHub Pages at `/golden-price/` on pushes to `main`.
 

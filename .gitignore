@@ -1,8 +1,26 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
 apps/www/dist/
 apps/www/.astro/
+apps/www/public/data/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local price data (production lives in Cloudflare R2)
+data/
+
+# Tooling / local notes
 .superpowers/
+docs/
+.wrangler/
+.dev.vars
+
+# Logs & OS
 *.log
 .DS_Store
-docs/
