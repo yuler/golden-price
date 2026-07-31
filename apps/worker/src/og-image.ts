@@ -155,9 +155,3 @@ export async function writeOgImage(
     },
   });
 }
-
-export async function readOgImage(
-  bucket: R2Bucket,
-): Promise<R2ObjectBody | null> {
-  return bucket.get(OG_IMAGE_KEY);
-}

@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { DailyPriceFile } from "@golden-price/core/worker";
+import {
+  HOURS,
+  JINGJINJIN_STORAGE_KEY,
+  SLOTS_PER_HOUR,
+  type DailyPriceFile,
+} from "@golden-price/core/worker";
 import {
   formatSigned,
+  isOgStale,
   quoteFromDailyFile,
   sourceDisplayName,
 } from "./og-quote.js";
@@ -11,8 +17,8 @@ function fileWith(
   entries: Array<{ hour: number; slot: number; value: number | null }>,
   date = "2026-07-30",
 ): DailyPriceFile {
-  const prices = Array.from({ length: 24 }, () =>
-    Array<number | null>(12).fill(null),
+  const prices = Array.from({ length: HOURS }, () =>
+    Array<number | null>(SLOTS_PER_HOUR).fill(null),
   );
   for (const entry of entries) {
     prices[entry.hour]![entry.slot] = entry.value;
@@ -22,7 +28,7 @@ function fileWith(
 
 describe("sourceDisplayName", () => {
   it("maps jingjinjin to a short Chinese label", () => {
-    assert.equal(sourceDisplayName("jingjinjin.cn"), "京金金");
+    assert.equal(sourceDisplayName(JINGJINJIN_STORAGE_KEY), "京金金");
   });
 });
 
@@ -35,7 +41,7 @@ describe("formatSigned", () => {
 
 describe("quoteFromDailyFile", () => {
   it("returns null when the day has no quotes", () => {
-    assert.equal(quoteFromDailyFile(fileWith([]), "jingjinjin.cn"), null);
+    assert.equal(quoteFromDailyFile(fileWith([]), JINGJINJIN_STORAGE_KEY), null);
   });
 
   it("builds price change and labels from the daily grid", () => {
@@ -44,14 +50,14 @@ describe("quoteFromDailyFile", () => {
         { hour: 9, slot: 0, value: 100 },
         { hour: 10, slot: 0, value: 102.5 },
       ]),
-      "jingjinjin.cn",
+      JINGJINJIN_STORAGE_KEY,
     );
 
     assert.deepEqual(quote, {
       price: 102.5,
       absoluteChange: 2.5,
       percentageChange: 2.5,
-      updatedLabel: "10:00 更新",
+      updatedLabel: "2026-07-30 10:00 更新",
       date: "2026-07-30",
       source: "数据源：京金金",
       observations: [
@@ -59,5 +65,38 @@ describe("quoteFromDailyFile", () => {
         { label: "10:00", value: 102.5 },
       ],
     });
+  });
+});
+
+describe("isOgStale", () => {
+  const quote = {
+    price: 102.5,
+    absoluteChange: 2.5,
+    percentageChange: 2.5,
+    updatedLabel: "2026-07-30 10:00 更新",
+    date: "2026-07-30",
+    source: "数据源：京金金",
+    observations: [{ label: "10:00", value: 102.5 }],
+  };
+
+  it("treats missing metadata as stale", () => {
+    assert.equal(isOgStale(undefined, quote), true);
+  });
+
+  it("matches on date and updatedLabel", () => {
+    assert.equal(
+      isOgStale(
+        { date: "2026-07-30", updatedLabel: "2026-07-30 10:00 更新" },
+        quote,
+      ),
+      false,
+    );
+    assert.equal(
+      isOgStale(
+        { date: "2026-07-30", updatedLabel: "2026-07-30 09:00 更新" },
+        quote,
+      ),
+      true,
+    );
   });
 });

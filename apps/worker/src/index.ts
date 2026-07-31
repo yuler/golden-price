@@ -5,8 +5,8 @@ import {
 } from "@golden-price/core/worker";
 import { corsHeaders, jsonResponse } from "./cors.js";
 import { writeManifest } from "./manifest.js";
-import { OG_IMAGE_KEY, readOgImage, writeOgImage } from "./og-image.js";
-import { quoteFromDailyFile } from "./og-quote.js";
+import { OG_IMAGE_KEY, writeOgImage } from "./og-image.js";
+import { isOgStale, quoteFromDailyFile } from "./og-quote.js";
 import { MANIFEST_KEY, R2DailyPriceStore } from "./r2-store.js";
 
 export interface Env {
@@ -83,11 +83,23 @@ async function serveOgImage(
   store: R2DailyPriceStore,
   request: Request,
 ): Promise<Response> {
-  let object = await readOgImage(env.GOLDEN_PRICE_DATA);
-  if (!object) {
-    await refreshOgImage(store, env.GOLDEN_PRICE_DATA);
-    object = await readOgImage(env.GOLDEN_PRICE_DATA);
+  const bucket = env.GOLDEN_PRICE_DATA;
+  try {
+    const existing = await bucket.head(OG_IMAGE_KEY);
+    const quote = await latestOgQuote(store);
+    if (quote && isOgStale(existing?.customMetadata, quote)) {
+      await writeOgImage(bucket, quote);
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "og-image-error",
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
   }
+
+  const object = await bucket.get(OG_IMAGE_KEY);
   if (!object) {
     return jsonResponse(
       JSON.stringify({ error: "OG image unavailable" }),
@@ -108,19 +120,16 @@ async function serveOgImage(
   return new Response(object.body, { status: 200, headers });
 }
 
-async function refreshOgImage(
-  store: R2DailyPriceStore,
-  bucket: R2Bucket,
-): Promise<boolean> {
+async function latestOgQuote(store: R2DailyPriceStore) {
   const channelId = JINGJINJIN_STORAGE_KEY;
   const dates = await store.listDates(channelId);
   const latestDate = dates.at(-1);
-  if (!latestDate) return false;
+  if (!latestDate) return null;
 
   const file = await store.load(channelId, latestDate);
-  if (!file) return false;
+  if (!file) return null;
 
-  return writeOgFromFile(bucket, file, channelId);
+  return quoteFromDailyFile(file, channelId);
 }
 
 async function writeOgFromFile(

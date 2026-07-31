@@ -1,7 +1,9 @@
-import type { DailyPriceFile } from "@golden-price/core/worker";
-
-const HOURS = 24;
-const SLOTS_PER_HOUR = 12;
+import {
+  HOURS,
+  JINGJINJIN_STORAGE_KEY,
+  SLOTS_PER_HOUR,
+  type DailyPriceFile,
+} from "@golden-price/core/worker";
 
 export interface OgObservation {
   label: string;
@@ -19,7 +21,7 @@ export interface OgQuote {
 }
 
 export function sourceDisplayName(channelId: string): string {
-  return channelId === "jingjinjin.cn" ? "京金金" : channelId;
+  return channelId === JINGJINJIN_STORAGE_KEY ? "京金金" : channelId;
 }
 
 export function formatSigned(value: number): string {
@@ -78,9 +80,20 @@ export function quoteFromDailyFile(
     price: latest.value,
     absoluteChange,
     percentageChange,
-    updatedLabel: `${latest.label} 更新`,
+    updatedLabel: `${file.date} ${latest.label} 更新`,
     date: file.date,
     source: `数据源：${sourceDisplayName(channelId)}`,
     observations,
   };
+}
+
+/** True when R2 OG metadata does not match the latest quote fingerprint. */
+export function isOgStale(
+  metadata: Record<string, string> | undefined,
+  quote: OgQuote,
+): boolean {
+  if (!metadata?.date || !metadata.updatedLabel) return true;
+  return (
+    metadata.date !== quote.date || metadata.updatedLabel !== quote.updatedLabel
+  );
 }
