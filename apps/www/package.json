@@ -10,7 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro sync && astro-check",
-    "test": "tsx --test src/lib/prices.test.ts"
+    "test": "tsx --test src/lib/*.test.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
