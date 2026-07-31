@@ -19,10 +19,13 @@ const {
 const assetBase = import.meta.env.BASE_URL;
 const siteOrigin = Astro.site ?? new URL("https://gold.yuler.dev");
 const canonicalUrl = new URL(Astro.url.pathname, siteOrigin).href;
-const ogImageUrl = new URL(
-  `${assetBase}og-gold-price.png`.replace(/\/{2,}/g, "/"),
-  siteOrigin,
-).href;
+const dataBase = import.meta.env.PUBLIC_DATA_BASE_URL?.trim();
+const ogImageUrl = dataBase
+  ? new URL("og.png", dataBase.endsWith("/") ? dataBase : `${dataBase}/`).href
+  : new URL(
+      `${assetBase}og-gold-price.png`.replace(/\/{2,}/g, "/"),
+      siteOrigin,
+    ).href;
 const themeBoot = themeBootScript();
 ---
 
