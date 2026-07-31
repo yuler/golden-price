@@ -1,5 +1,10 @@
 ---
 import { pwaInfo } from "virtual:pwa-info";
+import {
+  DEFAULT_THEME,
+  THEME_COLORS,
+  themeBootScript,
+} from "../lib/theme";
 
 interface Props {
   title: string;
@@ -21,6 +26,7 @@ const ogImageUrl = dataBase
       `${assetBase}og-gold-price.png`.replace(/\/{2,}/g, "/"),
       siteOrigin,
     ).href;
+const themeBoot = themeBootScript();
 ---
 
 <!doctype html>
@@ -44,7 +50,11 @@ const ogImageUrl = dataBase
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
-    <meta name="theme-color" content="#101116" id="theme-color-meta" />
+    <meta
+      name="theme-color"
+      content={THEME_COLORS[DEFAULT_THEME]}
+      id="theme-color-meta"
+    />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -54,25 +64,7 @@ const ogImageUrl = dataBase
     <link rel="apple-touch-icon" href={`${assetBase}apple-touch-icon.png`} />
     {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
     <title>{title}</title>
-    <script is:inline>
-      (() => {
-        const storageKey = "gp-theme";
-        const darkColor = "#101116";
-        const lightColor = "#f6f3ea";
-        const saved = localStorage.getItem(storageKey);
-        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const theme =
-          saved === "light" || saved === "dark"
-            ? saved
-            : systemDark
-              ? "dark"
-              : "light";
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.style.colorScheme = theme;
-        const meta = document.getElementById("theme-color-meta");
-        if (meta) meta.setAttribute("content", theme === "dark" ? darkColor : lightColor);
-      })();
-    </script>
+    <script is:inline set:html={themeBoot} />
     <script src="../pwa.ts"></script>
   </head>
   <body>
@@ -101,7 +93,7 @@ const ogImageUrl = dataBase
 
   :root[data-theme="light"] {
     color-scheme: light;
-    --bg: #f6f3ea;
+    --bg: #ffffff;
     --text: #1c1d22;
     --muted: #6b6e76;
     --gold: #9a7410;

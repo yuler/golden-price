@@ -12,12 +12,19 @@ import {
 import {
   canShareFiles,
   changeTone,
+  createShareProbeFile,
   downloadBlob,
   formatSigned,
   renderShareCardBlob,
   shareCardFile,
   shareCardFilename,
+  shareCardUpdatedLabel,
 } from "../lib/share-card";
+import {
+  applyTheme,
+  readDocumentTheme,
+  type Theme,
+} from "../lib/theme";
 import { PriceChart } from "./PriceChart";
 import "./PriceDashboard.css";
 
@@ -32,14 +39,7 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "loaded"; channelId: string; file: DailyPriceFile };
 
-type Theme = "light" | "dark";
 type ShareStatus = "idle" | "busy" | "error";
-
-const THEME_STORAGE_KEY = "gp-theme";
-const THEME_COLORS = {
-  dark: "#101116",
-  light: "#f6f3ea",
-} as const;
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -47,40 +47,17 @@ function sourceName(channelId: string): string {
   return channelId === "jingjinjin.cn" ? "京金金" : channelId;
 }
 
-function readTheme(): Theme {
-  if (typeof document === "undefined") return "dark";
-  const attr = document.documentElement.dataset.theme;
-  if (attr === "light" || attr === "dark") return attr;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function applyTheme(theme: Theme): void {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
-  const meta = document.getElementById("theme-color-meta");
-  if (meta) meta.setAttribute("content", THEME_COLORS[theme]);
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-  } catch {
-    // Ignore quota / private-mode failures.
-  }
-}
-
 function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    setTheme(readTheme());
+    setTheme(readDocumentTheme());
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      applyTheme(next);
-      return next;
-    });
+    const next = readDocumentTheme() === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
   }, []);
 
   return [theme, toggle];
@@ -162,11 +139,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "loading") {
     return (
       <main className="market-page" aria-busy="true" aria-live="polite">
-        <MarketHeader
-          source="数据加载中"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据加载中" onToggleTheme={toggleTheme} />
         <section className="quote-block quote-block--loading">
           <span className="skeleton skeleton--price" />
           <span className="skeleton skeleton--change" />
@@ -182,11 +155,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "error") {
     return (
       <main className="market-page" aria-live="assertive">
-        <MarketHeader
-          source="数据源：京金金"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据源：京金金" onToggleTheme={toggleTheme} />
         <div className="chart-state chart-state--error">
           <p>{loadState.message}</p>
           <button type="button" onClick={() => void load()}>
@@ -201,11 +170,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "empty") {
     return (
       <main className="market-page" aria-live="polite">
-        <MarketHeader
-          source="数据源：京金金"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据源：京金金" onToggleTheme={toggleTheme} />
         <div className="chart-state">
           <p>今日暂无报价</p>
         </div>
@@ -238,7 +203,10 @@ function LoadedDashboard({
   const observations = useMemo(() => validPriceObservations(file), [file]);
   const state = classifyPriceData(file, shanghaiDate());
   const latest = observations.at(-1);
-  const change = state === "ready" ? calculateDailyChange(observations) : null;
+  const change = useMemo(
+    () => (state === "ready" ? calculateDailyChange(observations) : null),
+    [observations, state],
+  );
   const tone = change ? changeTone(change.absolute) : "flat";
   const source = `数据源：${sourceName(channelId)}`;
   const updated = latest
@@ -254,15 +222,17 @@ function LoadedDashboard({
   const summary = latest
     ? `黄金最新价格 ${latest.value.toFixed(2)} 元每克${changeSummary}，${updated}`
     : "今日暂无黄金报价";
+  const [shareOpen, setShareOpen] = useState(false);
+  const [captureFlash, setCaptureFlash] = useState(false);
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const [shareMessage, setShareMessage] = useState("");
   const [canShare, setCanShare] = useState(false);
+  const [shareCard, setShareCard] = useState<Blob | null>(null);
+  const shareCardRequest = useRef<Promise<Blob> | null>(null);
+  const shareCardGeneration = useRef(0);
 
   useEffect(() => {
-    const probe = new File([new Uint8Array([137, 80, 78, 71])], "probe.png", {
-      type: "image/png",
-    });
-    setCanShare(canShareFiles(probe));
+    setCanShare(canShareFiles(createShareProbeFile()));
   }, []);
 
   const exportCard = useCallback(async () => {
@@ -270,19 +240,76 @@ function LoadedDashboard({
     return renderShareCardBlob({
       price: latest.value,
       change,
-      updatedLabel: updated,
+      updatedLabel: shareCardUpdatedLabel(file.date, latest.label),
       date: file.date,
       source,
       observations,
     });
-  }, [change, file.date, latest, observations, source, updated]);
+  }, [change, file.date, latest, observations, source]);
+
+  useEffect(() => {
+    shareCardGeneration.current += 1;
+    shareCardRequest.current = null;
+    setShareCard(null);
+  }, [exportCard]);
+
+  const ensureShareCard = useCallback(async (): Promise<Blob> => {
+    if (shareCard) return shareCard;
+    if (shareCardRequest.current) return shareCardRequest.current;
+    const generation = shareCardGeneration.current;
+    const request = exportCard()
+      .then((blob) => {
+        if (generation === shareCardGeneration.current) {
+          setShareCard(blob);
+        }
+        return blob;
+      })
+      .finally(() => {
+        if (shareCardRequest.current === request) {
+          shareCardRequest.current = null;
+        }
+      });
+    shareCardRequest.current = request;
+    return request;
+  }, [exportCard, shareCard]);
+
+  const warmShareCard = useCallback(() => {
+    if (shareCard || shareStatus === "busy") return;
+    void ensureShareCard().catch(() => {
+      // the real error surfaces when the modal opens.
+    });
+  }, [ensureShareCard, shareCard, shareStatus]);
+
+  const openShare = useCallback(() => {
+    setShareMessage("");
+    setCaptureFlash(true);
+    setShareOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!shareOpen || shareCard) return;
+    void ensureShareCard().catch((error) => {
+      setShareMessage(error instanceof Error ? error.message : "分享卡片生成失败");
+    });
+  }, [ensureShareCard, shareCard, shareOpen]);
+
+  useEffect(() => {
+    if (!captureFlash) return;
+    const id = window.setTimeout(() => setCaptureFlash(false), 400);
+    return () => window.clearTimeout(id);
+  }, [captureFlash]);
+
+  const closeShare = useCallback(() => {
+    setShareOpen(false);
+    setShareMessage("");
+  }, []);
 
   const handleDownload = useCallback(async () => {
-    if (!latest || shareStatus === "busy") return;
+    if (shareStatus === "busy") return;
     setShareStatus("busy");
     setShareMessage("");
     try {
-      const blob = await exportCard();
+      const blob = await ensureShareCard();
       downloadBlob(blob, shareCardFilename(file.date));
       setShareStatus("idle");
     } catch (error) {
@@ -290,24 +317,25 @@ function LoadedDashboard({
       setShareStatus("error");
       setShareMessage(error instanceof Error ? error.message : "下载失败");
     }
-  }, [exportCard, file.date, latest, shareStatus]);
+  }, [ensureShareCard, file.date, shareStatus]);
 
-  const handleShare = useCallback(async () => {
-    if (!latest || shareStatus === "busy") return;
+  const handleModalShare = useCallback(async () => {
+    if (!latest || !shareCard || shareStatus === "busy") return;
     setShareStatus("busy");
     setShareMessage("");
     try {
-      const blob = await exportCard();
-      const fileName = shareCardFilename(file.date);
-      const cardFile = new File([blob], fileName, { type: "image/png" });
+      const cardFile = new File([shareCard], shareCardFilename(file.date), {
+        type: "image/png",
+      });
       const shareText = `今日金价 ${latest.value.toFixed(2)} 元/克`;
       const result = await shareCardFile(cardFile, "今日金价", shareText);
-      if (result === "unsupported") {
-        downloadBlob(blob, fileName);
-        setShareMessage("当前浏览器不支持直接分享，已改为下载");
-      } else if (result === "failed") {
+      if (result === "unsupported" || result === "failed") {
         setShareStatus("error");
-        setShareMessage("分享失败，请改用下载");
+        setShareMessage(
+          result === "unsupported"
+            ? "当前浏览器不支持直接分享，请使用下载"
+            : "分享失败，请改用下载",
+        );
         return;
       }
       setShareStatus("idle");
@@ -316,15 +344,11 @@ function LoadedDashboard({
       setShareStatus("error");
       setShareMessage(error instanceof Error ? error.message : "分享失败");
     }
-  }, [exportCard, file.date, latest, shareStatus]);
+  }, [file.date, latest, shareCard, shareStatus]);
 
   return (
     <main className="market-page" aria-live="polite">
-      <MarketHeader
-        source={source}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-      />
+      <MarketHeader source={source} onToggleTheme={onToggleTheme} />
 
       {latest ? (
         <section className="quote-block" aria-label={summary}>
@@ -351,22 +375,25 @@ function LoadedDashboard({
           <div className="share-actions">
             <button
               type="button"
-              className="share-action"
+              className="icon-button"
               onClick={() => void handleDownload()}
               disabled={shareStatus === "busy"}
+              aria-label="下载分享卡片"
+              title="下载分享卡片"
             >
-              {shareStatus === "busy" ? "生成中…" : "下载卡片"}
+              <DownloadIcon />
             </button>
-            {canShare ? (
-              <button
-                type="button"
-                className="share-action"
-                onClick={() => void handleShare()}
-                disabled={shareStatus === "busy"}
-              >
-                分享
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="icon-button"
+              onPointerDown={warmShareCard}
+              onClick={openShare}
+              disabled={shareStatus === "busy"}
+              aria-label="分享"
+              title="分享"
+            >
+              <ShareIcon />
+            </button>
           </div>
           {shareMessage ? (
             <p
@@ -404,34 +431,52 @@ function LoadedDashboard({
       )}
 
       <MarketFooter left={updated} />
+
+      {captureFlash ? (
+        <div className="capture-flash" aria-hidden="true" />
+      ) : null}
+
+      {shareOpen ? (
+        <ShareModal
+          blob={shareCard}
+          canShare={canShare}
+          busy={shareStatus === "busy"}
+          message={shareMessage}
+          tone={shareStatus === "error" ? "error" : "info"}
+          onClose={closeShare}
+          onDownload={() => void handleDownload()}
+          onShare={() => void handleModalShare()}
+        />
+      ) : null}
     </main>
   );
 }
 
 function MarketHeader({
   source,
-  theme,
   onToggleTheme,
 }: {
   source: string;
-  theme: Theme;
   onToggleTheme: () => void;
 }) {
   return (
     <header className="market-header">
       <p>黄金 · CNY</p>
-      <div className="market-header__meta">
-        <span>{source}</span>
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={onToggleTheme}
-          aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
-          title={theme === "dark" ? "浅色" : "深色"}
-        >
-          {theme === "dark" ? "浅色" : "深色"}
-        </button>
-      </div>
+      <span className="market-header__source">{source}</span>
+      <button
+        type="button"
+        className="icon-button market-header__theme"
+        onClick={onToggleTheme}
+        aria-label="切换主题"
+        title="切换主题"
+      >
+        <span className="theme-icon theme-icon--sun" aria-hidden="true">
+          <SunIcon />
+        </span>
+        <span className="theme-icon theme-icon--moon" aria-hidden="true">
+          <MoonIcon />
+        </span>
+      </button>
     </header>
   );
 }
@@ -442,6 +487,219 @@ function MarketFooter({ left }: { left: string }) {
       <span>{left}</span>
       <span>每 5 分钟采集 · 上海时间</span>
     </footer>
+  );
+}
+
+function ShareModal({
+  blob,
+  canShare,
+  busy,
+  message,
+  tone,
+  onClose,
+  onDownload,
+  onShare,
+}: {
+  blob: Blob | null;
+  canShare: boolean;
+  busy: boolean;
+  message: string;
+  tone: "error" | "info";
+  onClose: () => void;
+  onDownload: () => void;
+  onShare: () => void;
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blob) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [blob]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="share-modal-backdrop" onClick={onClose}>
+      <div
+        className="share-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="share-modal__chrome">
+          <p id="share-modal-title" className="share-modal__eyebrow">
+            分享今日金价
+          </p>
+          <button
+            type="button"
+            className="icon-button share-modal__close"
+            onClick={onClose}
+            aria-label="关闭"
+            title="关闭"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="share-modal__stage">
+          {previewUrl ? (
+            <img
+              className="share-modal__preview"
+              src={previewUrl}
+              alt="今日金价分享卡片"
+            />
+          ) : (
+            <p className="share-modal__loading">正在生成分享卡片…</p>
+          )}
+        </div>
+
+        <div className="share-modal__footer">
+          <div className="share-modal__actions">
+            {canShare ? (
+              <button
+                type="button"
+                className="share-modal__action"
+                onClick={onShare}
+                disabled={busy || !blob}
+              >
+                <ShareIcon />
+                分享
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="share-modal__action share-modal__action--primary"
+              onClick={onDownload}
+              disabled={busy || !blob}
+            >
+              <DownloadIcon />
+              下载
+            </button>
+          </div>
+          {message ? (
+            <p
+              className="share-feedback share-modal__message"
+              role="status"
+              data-tone={tone}
+            >
+              {message}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }
 

@@ -19,6 +19,11 @@ export function shareCardFilename(date: string): string {
   return `jin-jia-${date}.png`;
 }
 
+/** Footer line for the share card: always include the quote date. */
+export function shareCardUpdatedLabel(date: string, timeLabel: string): string {
+  return `${date} ${timeLabel} 更新`;
+}
+
 export function formatSigned(value: number): string {
   if (value > 0) return `+${value.toFixed(2)}`;
   return value.toFixed(2);
@@ -30,7 +35,21 @@ export function changeTone(value: number): "up" | "down" | "flat" {
   return "flat";
 }
 
-export function canShareFiles(file: File): boolean {
+/** Valid 1×1 PNG used only to probe Web Share file support. */
+const SHARE_PROBE_PNG = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00,
+  0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+]);
+
+export function createShareProbeFile(): File {
+  return new File([SHARE_PROBE_PNG], "probe.png", { type: "image/png" });
+}
+
+export function canShareFiles(file: File = createShareProbeFile()): boolean {
   if (
     typeof navigator === "undefined" ||
     typeof navigator.share !== "function" ||
@@ -47,17 +66,14 @@ export function canShareFiles(file: File): boolean {
 
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
-  try {
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.rel = "noopener";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export async function shareCardFile(

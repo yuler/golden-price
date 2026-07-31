@@ -24,19 +24,20 @@
   min-width: 0;
 }
 
-.market-header,
+.market-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .market-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.market-header__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
 }
 
 .market-header p {
@@ -45,36 +46,67 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.14em;
+  white-space: nowrap;
 }
 
-.market-header span,
-.market-footer {
+.market-header__source {
+  min-width: 0;
   color: var(--muted);
   font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.theme-toggle,
-.share-action {
+.market-header__theme {
+  justify-self: end;
+  position: relative;
+}
+
+.theme-icon {
+  display: block;
+}
+
+.theme-icon--moon {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon--sun {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon--moon {
+  display: block;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
   border: 1px solid var(--control-border);
   border-radius: 999px;
   background: transparent;
   color: var(--gold);
-  padding: 0.35rem 0.75rem;
+  padding: 0;
   font: inherit;
-  font-size: 0.68rem;
-  font-weight: 600;
   cursor: pointer;
 }
 
-.theme-toggle:focus-visible,
-.share-action:focus-visible {
+.icon-button:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
-.share-action:disabled {
+.icon-button:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+.icon-button svg {
+  display: block;
 }
 
 .share-actions {
@@ -92,6 +124,225 @@
 
 .share-feedback[data-tone="error"] {
   color: var(--down);
+}
+
+.capture-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in srgb, var(--text) 88%, transparent);
+  pointer-events: none;
+  animation: capture-flash 360ms ease-out forwards;
+}
+
+@keyframes capture-flash {
+  0% {
+    opacity: 0.72;
+  }
+
+  35% {
+    opacity: 0.28;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.share-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgb(0 0 0 / 52%);
+  backdrop-filter: blur(6px);
+  animation: share-backdrop-in 280ms ease-out;
+}
+
+.share-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-height: min(92svh, 44rem);
+  padding: 0.85rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+  border-bottom: 0;
+  border-radius: 1.15rem 1.15rem 0 0;
+  background:
+    radial-gradient(circle at 82% 0%, var(--glow), transparent 42%),
+    var(--bg);
+  color: var(--text);
+  overflow: auto;
+  animation: share-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.share-modal__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+}
+
+.share-modal__eyebrow {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.share-modal__close {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-color: color-mix(in srgb, var(--control-border) 70%, transparent);
+}
+
+.share-modal__stage {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  overflow: hidden;
+}
+
+.share-modal__preview {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-modal__loading {
+  margin: 0;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.share-modal__footer {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.share-modal__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.share-modal__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.65rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold);
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.share-modal__action--primary {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.share-modal__action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.share-modal__action:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.share-modal__action svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.share-modal__message {
+  margin: 0;
+  text-align: center;
+}
+
+@keyframes share-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes share-sheet-in {
+  from {
+    opacity: 0.72;
+    transform: translateY(1.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes share-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 40rem) {
+  .share-modal-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .share-modal {
+    width: min(34rem, 100%);
+    max-height: min(90vh, 42rem);
+    padding: 1.15rem 1.25rem 1.25rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+    border-radius: 1rem;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 38%);
+    animation-name: share-modal-in;
+  }
+
+  .share-modal__stage {
+    min-height: 12rem;
+  }
+
+  .share-modal__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .share-modal__actions:has(> :only-child) {
+    grid-template-columns: minmax(10rem, 14rem);
+    justify-content: center;
+  }
 }
 
 .quote-block {
@@ -268,14 +519,7 @@
     padding: 1.35rem 1.1rem;
   }
 
-  .market-header span {
-    max-width: 42%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .market-header__meta {
+  .market-header {
     gap: 0.5rem;
   }
 
@@ -300,7 +544,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
+  .skeleton,
+  .capture-flash,
+  .share-modal-backdrop,
+  .share-modal {
     animation: none;
   }
 }
