@@ -1,5 +1,10 @@
 ---
 import { pwaInfo } from "virtual:pwa-info";
+import {
+  DEFAULT_THEME,
+  THEME_COLORS,
+  themeBootScript,
+} from "../lib/theme";
 
 interface Props {
   title: string;
@@ -18,6 +23,7 @@ const ogImageUrl = new URL(
   `${assetBase}og-gold-price.png`.replace(/\/{2,}/g, "/"),
   siteOrigin,
 ).href;
+const themeBoot = themeBootScript();
 ---
 
 <!doctype html>
@@ -41,7 +47,11 @@ const ogImageUrl = new URL(
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
-    <meta name="theme-color" content="#101116" id="theme-color-meta" />
+    <meta
+      name="theme-color"
+      content={THEME_COLORS[DEFAULT_THEME]}
+      id="theme-color-meta"
+    />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -51,30 +61,7 @@ const ogImageUrl = new URL(
     <link rel="apple-touch-icon" href={`${assetBase}apple-touch-icon.png`} />
     {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
     <title>{title}</title>
-    <script is:inline>
-      (() => {
-        const storageKey = "gp-theme";
-        const darkColor = "#101116";
-        const lightColor = "#ffffff";
-        let saved = null;
-        try {
-          saved = localStorage.getItem(storageKey);
-        } catch {
-          // Storage access can throw in private mode or when disabled.
-        }
-        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const theme =
-          saved === "light" || saved === "dark"
-            ? saved
-            : systemDark
-              ? "dark"
-              : "light";
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.style.colorScheme = theme;
-        const meta = document.getElementById("theme-color-meta");
-        if (meta) meta.setAttribute("content", theme === "dark" ? darkColor : lightColor);
-      })();
-    </script>
+    <script is:inline set:html={themeBoot} />
     <script src="../pwa.ts"></script>
   </head>
   <body>

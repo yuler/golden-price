@@ -61,6 +61,23 @@
 
 .market-header__theme {
   justify-self: end;
+  position: relative;
+}
+
+.theme-icon {
+  display: block;
+}
+
+.theme-icon--moon {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon--sun {
+  display: none;
+}
+
+:root[data-theme="light"] .theme-icon--moon {
+  display: block;
 }
 
 .icon-button {
@@ -109,16 +126,16 @@
   color: var(--down);
 }
 
-.shell-flash {
+.capture-flash {
   position: fixed;
   inset: 0;
   z-index: 60;
   background: color-mix(in srgb, var(--text) 88%, transparent);
   pointer-events: none;
-  animation: shell-flash 360ms ease-out forwards;
+  animation: capture-flash 360ms ease-out forwards;
 }
 
-@keyframes shell-flash {
+@keyframes capture-flash {
   0% {
     opacity: 0.72;
   }
@@ -528,7 +545,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton,
-  .shell-flash,
+  .capture-flash,
   .share-modal-backdrop,
   .share-modal {
     animation: none;

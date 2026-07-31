@@ -12,6 +12,7 @@ import {
 import {
   canShareFiles,
   changeTone,
+  createShareProbeFile,
   downloadBlob,
   formatSigned,
   renderShareCardBlob,
@@ -19,6 +20,11 @@ import {
   shareCardFilename,
   shareCardUpdatedLabel,
 } from "../lib/share-card";
+import {
+  applyTheme,
+  readDocumentTheme,
+  type Theme,
+} from "../lib/theme";
 import { PriceChart } from "./PriceChart";
 import "./PriceDashboard.css";
 
@@ -33,14 +39,7 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "loaded"; channelId: string; file: DailyPriceFile };
 
-type Theme = "light" | "dark";
 type ShareStatus = "idle" | "busy" | "error";
-
-const THEME_STORAGE_KEY = "gp-theme";
-const THEME_COLORS = {
-  dark: "#101116",
-  light: "#ffffff",
-} as const;
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -48,40 +47,18 @@ function sourceName(channelId: string): string {
   return channelId === "jingjinjin.cn" ? "京金金" : channelId;
 }
 
-function readTheme(): Theme {
-  if (typeof document === "undefined") return "dark";
-  const attr = document.documentElement.dataset.theme;
-  if (attr === "light" || attr === "dark") return attr;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function applyTheme(theme: Theme): void {
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
-  const meta = document.getElementById("theme-color-meta");
-  if (meta) meta.setAttribute("content", THEME_COLORS[theme]);
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-  } catch {
-    // Ignore quota / private-mode failures.
-  }
-}
-
 function useTheme(): [Theme, () => void] {
-  // Keep SSR and the first client render aligned; sync real preference after mount.
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    setTheme(readTheme());
+    setTheme(readDocumentTheme());
   }, []);
 
   const toggle = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
+    const next = readDocumentTheme() === "dark" ? "light" : "dark";
     applyTheme(next);
-  }, [theme]);
+    setTheme(next);
+  }, []);
 
   return [theme, toggle];
 }
@@ -162,11 +139,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "loading") {
     return (
       <main className="market-page" aria-busy="true" aria-live="polite">
-        <MarketHeader
-          source="数据加载中"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据加载中" onToggleTheme={toggleTheme} />
         <section className="quote-block quote-block--loading">
           <span className="skeleton skeleton--price" />
           <span className="skeleton skeleton--change" />
@@ -182,11 +155,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "error") {
     return (
       <main className="market-page" aria-live="assertive">
-        <MarketHeader
-          source="数据源：京金金"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据源：京金金" onToggleTheme={toggleTheme} />
         <div className="chart-state chart-state--error">
           <p>{loadState.message}</p>
           <button type="button" onClick={() => void load()}>
@@ -201,11 +170,7 @@ export function PriceDashboard({ dataBase }: PriceDashboardProps) {
   if (loadState.kind === "empty") {
     return (
       <main className="market-page" aria-live="polite">
-        <MarketHeader
-          source="数据源：京金金"
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <MarketHeader source="数据源：京金金" onToggleTheme={toggleTheme} />
         <div className="chart-state">
           <p>今日暂无报价</p>
         </div>
@@ -258,7 +223,7 @@ function LoadedDashboard({
     ? `黄金最新价格 ${latest.value.toFixed(2)} 元每克${changeSummary}，${updated}`
     : "今日暂无黄金报价";
   const [shareOpen, setShareOpen] = useState(false);
-  const [shellFlash, setShellFlash] = useState(false);
+  const [captureFlash, setCaptureFlash] = useState(false);
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const [shareMessage, setShareMessage] = useState("");
   const [canShare, setCanShare] = useState(false);
@@ -267,10 +232,7 @@ function LoadedDashboard({
   const shareCardGeneration = useRef(0);
 
   useEffect(() => {
-    const probe = new File([new Uint8Array([137, 80, 78, 71])], "probe.png", {
-      type: "image/png",
-    });
-    setCanShare(canShareFiles(probe));
+    setCanShare(canShareFiles(createShareProbeFile()));
   }, []);
 
   const exportCard = useCallback(async () => {
@@ -320,7 +282,7 @@ function LoadedDashboard({
 
   const openShare = useCallback(() => {
     setShareMessage("");
-    setShellFlash(true);
+    setCaptureFlash(true);
     setShareOpen(true);
   }, []);
 
@@ -332,10 +294,10 @@ function LoadedDashboard({
   }, [ensureShareCard, shareCard, shareOpen]);
 
   useEffect(() => {
-    if (!shellFlash) return;
-    const id = window.setTimeout(() => setShellFlash(false), 400);
+    if (!captureFlash) return;
+    const id = window.setTimeout(() => setCaptureFlash(false), 400);
     return () => window.clearTimeout(id);
-  }, [shellFlash]);
+  }, [captureFlash]);
 
   const closeShare = useCallback(() => {
     setShareOpen(false);
@@ -343,7 +305,7 @@ function LoadedDashboard({
   }, []);
 
   const handleDownload = useCallback(async () => {
-    if (!latest || shareStatus === "busy") return;
+    if (shareStatus === "busy") return;
     setShareStatus("busy");
     setShareMessage("");
     try {
@@ -355,7 +317,7 @@ function LoadedDashboard({
       setShareStatus("error");
       setShareMessage(error instanceof Error ? error.message : "下载失败");
     }
-  }, [ensureShareCard, file.date, latest, shareStatus]);
+  }, [ensureShareCard, file.date, shareStatus]);
 
   const handleModalShare = useCallback(async () => {
     if (!latest || !shareCard || shareStatus === "busy") return;
@@ -384,18 +346,9 @@ function LoadedDashboard({
     }
   }, [file.date, latest, shareCard, shareStatus]);
 
-  const handleModalDownload = useCallback(() => {
-    if (!shareCard) return;
-    downloadBlob(shareCard, shareCardFilename(file.date));
-  }, [file.date, shareCard]);
-
   return (
     <main className="market-page" aria-live="polite">
-      <MarketHeader
-        source={source}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-      />
+      <MarketHeader source={source} onToggleTheme={onToggleTheme} />
 
       {latest ? (
         <section className="quote-block" aria-label={summary}>
@@ -479,8 +432,8 @@ function LoadedDashboard({
 
       <MarketFooter left={updated} />
 
-      {shellFlash ? (
-        <div className="shell-flash" aria-hidden="true" />
+      {captureFlash ? (
+        <div className="capture-flash" aria-hidden="true" />
       ) : null}
 
       {shareOpen ? (
@@ -491,7 +444,7 @@ function LoadedDashboard({
           message={shareMessage}
           tone={shareStatus === "error" ? "error" : "info"}
           onClose={closeShare}
-          onDownload={handleModalDownload}
+          onDownload={() => void handleDownload()}
           onShare={() => void handleModalShare()}
         />
       ) : null}
@@ -501,11 +454,9 @@ function LoadedDashboard({
 
 function MarketHeader({
   source,
-  theme,
   onToggleTheme,
 }: {
   source: string;
-  theme: Theme;
   onToggleTheme: () => void;
 }) {
   return (
@@ -516,10 +467,15 @@ function MarketHeader({
         type="button"
         className="icon-button market-header__theme"
         onClick={onToggleTheme}
-        aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
-        title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+        aria-label="切换主题"
+        title="切换主题"
       >
-        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+        <span className="theme-icon theme-icon--sun" aria-hidden="true">
+          <SunIcon />
+        </span>
+        <span className="theme-icon theme-icon--moon" aria-hidden="true">
+          <MoonIcon />
+        </span>
       </button>
     </header>
   );

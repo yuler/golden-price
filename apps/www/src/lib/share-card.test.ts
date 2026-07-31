@@ -22,6 +22,20 @@ describe("shareCardUpdatedLabel", () => {
   });
 });
 
+describe("createShareProbeFile", () => {
+  it("builds a valid PNG signature for capability probes", async () => {
+    const { createShareProbeFile } = await import("./share-card");
+    const file = createShareProbeFile();
+    assert.equal(file.type, "image/png");
+    assert.ok(file.size > 8);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    assert.deepEqual(
+      [...bytes.slice(0, 8)],
+      [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    );
+  });
+});
+
 describe("formatSigned", () => {
   it("prefixes positive values", () => {
     assert.equal(formatSigned(1.2), "+1.20");
