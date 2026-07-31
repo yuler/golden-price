@@ -17,6 +17,7 @@ import {
   renderShareCardBlob,
   shareCardFile,
   shareCardFilename,
+  shareCardUpdatedLabel,
 } from "../lib/share-card";
 import { PriceChart } from "./PriceChart";
 import "./PriceDashboard.css";
@@ -38,7 +39,7 @@ type ShareStatus = "idle" | "busy" | "error";
 const THEME_STORAGE_KEY = "gp-theme";
 const THEME_COLORS = {
   dark: "#101116",
-  light: "#f6f3ea",
+  light: "#ffffff",
 } as const;
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -69,7 +70,12 @@ function applyTheme(theme: Theme): void {
 }
 
 function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(readTheme);
+  // Keep SSR and the first client render aligned; sync real preference after mount.
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  useEffect(() => {
+    setTheme(readTheme());
+  }, []);
 
   const toggle = useCallback(() => {
     const next = theme === "dark" ? "light" : "dark";
@@ -232,7 +238,10 @@ function LoadedDashboard({
   const observations = useMemo(() => validPriceObservations(file), [file]);
   const state = classifyPriceData(file, shanghaiDate());
   const latest = observations.at(-1);
-  const change = state === "ready" ? calculateDailyChange(observations) : null;
+  const change = useMemo(
+    () => (state === "ready" ? calculateDailyChange(observations) : null),
+    [observations, state],
+  );
   const tone = change ? changeTone(change.absolute) : "flat";
   const source = `数据源：${sourceName(channelId)}`;
   const updated = latest
@@ -248,10 +257,14 @@ function LoadedDashboard({
   const summary = latest
     ? `黄金最新价格 ${latest.value.toFixed(2)} 元每克${changeSummary}，${updated}`
     : "今日暂无黄金报价";
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shellFlash, setShellFlash] = useState(false);
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const [shareMessage, setShareMessage] = useState("");
   const [canShare, setCanShare] = useState(false);
-  const shareCardBlob = useRef<Blob | null>(null);
+  const [shareCard, setShareCard] = useState<Blob | null>(null);
+  const shareCardRequest = useRef<Promise<Blob> | null>(null);
+  const shareCardGeneration = useRef(0);
 
   useEffect(() => {
     const probe = new File([new Uint8Array([137, 80, 78, 71])], "probe.png", {
@@ -265,23 +278,76 @@ function LoadedDashboard({
     return renderShareCardBlob({
       price: latest.value,
       change,
-      updatedLabel: updated,
+      updatedLabel: shareCardUpdatedLabel(file.date, latest.label),
       date: file.date,
       source,
       observations,
     });
-  }, [change, file.date, latest, observations, source, updated]);
+  }, [change, file.date, latest, observations, source]);
 
   useEffect(() => {
-    shareCardBlob.current = null;
+    shareCardGeneration.current += 1;
+    shareCardRequest.current = null;
+    setShareCard(null);
   }, [exportCard]);
+
+  const ensureShareCard = useCallback(async (): Promise<Blob> => {
+    if (shareCard) return shareCard;
+    if (shareCardRequest.current) return shareCardRequest.current;
+    const generation = shareCardGeneration.current;
+    const request = exportCard()
+      .then((blob) => {
+        if (generation === shareCardGeneration.current) {
+          setShareCard(blob);
+        }
+        return blob;
+      })
+      .finally(() => {
+        if (shareCardRequest.current === request) {
+          shareCardRequest.current = null;
+        }
+      });
+    shareCardRequest.current = request;
+    return request;
+  }, [exportCard, shareCard]);
+
+  const warmShareCard = useCallback(() => {
+    if (shareCard || shareStatus === "busy") return;
+    void ensureShareCard().catch(() => {
+      // the real error surfaces when the modal opens.
+    });
+  }, [ensureShareCard, shareCard, shareStatus]);
+
+  const openShare = useCallback(() => {
+    setShareMessage("");
+    setShellFlash(true);
+    setShareOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!shareOpen || shareCard) return;
+    void ensureShareCard().catch((error) => {
+      setShareMessage(error instanceof Error ? error.message : "分享卡片生成失败");
+    });
+  }, [ensureShareCard, shareCard, shareOpen]);
+
+  useEffect(() => {
+    if (!shellFlash) return;
+    const id = window.setTimeout(() => setShellFlash(false), 400);
+    return () => window.clearTimeout(id);
+  }, [shellFlash]);
+
+  const closeShare = useCallback(() => {
+    setShareOpen(false);
+    setShareMessage("");
+  }, []);
 
   const handleDownload = useCallback(async () => {
     if (!latest || shareStatus === "busy") return;
     setShareStatus("busy");
     setShareMessage("");
     try {
-      const blob = await exportCard();
+      const blob = await ensureShareCard();
       downloadBlob(blob, shareCardFilename(file.date));
       setShareStatus("idle");
     } catch (error) {
@@ -289,24 +355,25 @@ function LoadedDashboard({
       setShareStatus("error");
       setShareMessage(error instanceof Error ? error.message : "下载失败");
     }
-  }, [exportCard, file.date, latest, shareStatus]);
+  }, [ensureShareCard, file.date, latest, shareStatus]);
 
-  const handleShare = useCallback(async () => {
-    if (!latest || shareStatus === "busy") return;
+  const handleModalShare = useCallback(async () => {
+    if (!latest || !shareCard || shareStatus === "busy") return;
     setShareStatus("busy");
     setShareMessage("");
     try {
-      const blob = shareCardBlob.current ?? (await exportCard());
-      const fileName = shareCardFilename(file.date);
-      const cardFile = new File([blob], fileName, { type: "image/png" });
+      const cardFile = new File([shareCard], shareCardFilename(file.date), {
+        type: "image/png",
+      });
       const shareText = `今日金价 ${latest.value.toFixed(2)} 元/克`;
       const result = await shareCardFile(cardFile, "今日金价", shareText);
-      if (result === "unsupported") {
-        downloadBlob(blob, fileName);
-        setShareMessage("当前浏览器不支持直接分享，已改为下载");
-      } else if (result === "failed") {
+      if (result === "unsupported" || result === "failed") {
         setShareStatus("error");
-        setShareMessage("分享失败，请改用下载");
+        setShareMessage(
+          result === "unsupported"
+            ? "当前浏览器不支持直接分享，请使用下载"
+            : "分享失败，请改用下载",
+        );
         return;
       }
       setShareStatus("idle");
@@ -315,18 +382,12 @@ function LoadedDashboard({
       setShareStatus("error");
       setShareMessage(error instanceof Error ? error.message : "分享失败");
     }
-  }, [exportCard, file.date, latest, shareStatus]);
+  }, [file.date, latest, shareCard, shareStatus]);
 
-  const warmShareCard = useCallback(() => {
-    if (shareCardBlob.current || shareStatus === "busy") return;
-    void exportCard()
-      .then((blob) => {
-        shareCardBlob.current = blob;
-      })
-      .catch(() => {
-        // handleShare surfaces the real error.
-      });
-  }, [exportCard, shareStatus]);
+  const handleModalDownload = useCallback(() => {
+    if (!shareCard) return;
+    downloadBlob(shareCard, shareCardFilename(file.date));
+  }, [file.date, shareCard]);
 
   return (
     <main className="market-page" aria-live="polite">
@@ -361,23 +422,25 @@ function LoadedDashboard({
           <div className="share-actions">
             <button
               type="button"
-              className="share-action"
+              className="icon-button"
               onClick={() => void handleDownload()}
               disabled={shareStatus === "busy"}
+              aria-label="下载分享卡片"
+              title="下载分享卡片"
             >
-              {shareStatus === "busy" ? "生成中…" : "下载卡片"}
+              <DownloadIcon />
             </button>
-            {canShare ? (
-              <button
-                type="button"
-                className="share-action"
-                onPointerDown={warmShareCard}
-                onClick={() => void handleShare()}
-                disabled={shareStatus === "busy"}
-              >
-                分享
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="icon-button"
+              onPointerDown={warmShareCard}
+              onClick={openShare}
+              disabled={shareStatus === "busy"}
+              aria-label="分享"
+              title="分享"
+            >
+              <ShareIcon />
+            </button>
           </div>
           {shareMessage ? (
             <p
@@ -415,6 +478,23 @@ function LoadedDashboard({
       )}
 
       <MarketFooter left={updated} />
+
+      {shellFlash ? (
+        <div className="shell-flash" aria-hidden="true" />
+      ) : null}
+
+      {shareOpen ? (
+        <ShareModal
+          blob={shareCard}
+          canShare={canShare}
+          busy={shareStatus === "busy"}
+          message={shareMessage}
+          tone={shareStatus === "error" ? "error" : "info"}
+          onClose={closeShare}
+          onDownload={handleModalDownload}
+          onShare={() => void handleModalShare()}
+        />
+      ) : null}
     </main>
   );
 }
@@ -431,18 +511,16 @@ function MarketHeader({
   return (
     <header className="market-header">
       <p>黄金 · CNY</p>
-      <div className="market-header__meta">
-        <span>{source}</span>
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={onToggleTheme}
-          aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
-          title={theme === "dark" ? "浅色" : "深色"}
-        >
-          {theme === "dark" ? "浅色" : "深色"}
-        </button>
-      </div>
+      <span className="market-header__source">{source}</span>
+      <button
+        type="button"
+        className="icon-button market-header__theme"
+        onClick={onToggleTheme}
+        aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+        title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}
+      >
+        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+      </button>
     </header>
   );
 }
@@ -453,6 +531,205 @@ function MarketFooter({ left }: { left: string }) {
       <span>{left}</span>
       <span>每 5 分钟采集 · 上海时间</span>
     </footer>
+  );
+}
+
+function ShareModal({
+  blob,
+  canShare,
+  busy,
+  message,
+  tone,
+  onClose,
+  onDownload,
+  onShare,
+}: {
+  blob: Blob | null;
+  canShare: boolean;
+  busy: boolean;
+  message: string;
+  tone: "error" | "info";
+  onClose: () => void;
+  onDownload: () => void;
+  onShare: () => void;
+}) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blob) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [blob]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="share-modal-backdrop" onClick={onClose}>
+      <div
+        className="share-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="分享今日金价"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="icon-button share-modal__close"
+          onClick={onClose}
+          aria-label="关闭"
+          title="关闭"
+        >
+          <CloseIcon />
+        </button>
+        {previewUrl ? (
+          <img
+            className="share-modal__preview"
+            src={previewUrl}
+            alt="今日金价分享卡片"
+          />
+        ) : (
+          <p className="share-modal__loading">正在生成分享卡片…</p>
+        )}
+        <div className="share-modal__actions">
+          {canShare ? (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onShare}
+              disabled={busy}
+              aria-label="分享到系统"
+              title="分享"
+            >
+              <ShareIcon />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onDownload}
+            disabled={busy || !blob}
+            aria-label="下载卡片"
+            title="下载"
+          >
+            <DownloadIcon />
+          </button>
+        </div>
+        {message ? (
+          <p
+            className="share-feedback share-modal__message"
+            role="status"
+            data-tone={tone}
+          >
+            {message}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }
 

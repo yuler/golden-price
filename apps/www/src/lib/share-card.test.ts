@@ -4,11 +4,21 @@ import {
   changeTone,
   formatSigned,
   shareCardFilename,
+  shareCardUpdatedLabel,
 } from "./share-card";
 
 describe("shareCardFilename", () => {
   it("builds a stable download name from the quote date", () => {
     assert.equal(shareCardFilename("2026-07-30"), "jin-jia-2026-07-30.png");
+  });
+});
+
+describe("shareCardUpdatedLabel", () => {
+  it("includes the quote date and slot time", () => {
+    assert.equal(
+      shareCardUpdatedLabel("2026-07-31", "14:35"),
+      "2026-07-31 14:35 更新",
+    );
   });
 });
 

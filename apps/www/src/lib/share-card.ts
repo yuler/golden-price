@@ -19,6 +19,11 @@ export function shareCardFilename(date: string): string {
   return `jin-jia-${date}.png`;
 }
 
+/** Footer line for the share card: always include the quote date. */
+export function shareCardUpdatedLabel(date: string, timeLabel: string): string {
+  return `${date} ${timeLabel} 更新`;
+}
+
 export function formatSigned(value: number): string {
   if (value > 0) return `+${value.toFixed(2)}`;
   return value.toFixed(2);
