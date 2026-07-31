@@ -569,8 +569,13 @@ function ShareModal({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [onClose]);
 
   return (
@@ -579,60 +584,69 @@ function ShareModal({
         className="share-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="分享今日金价"
+        aria-labelledby="share-modal-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <button
-          type="button"
-          className="icon-button share-modal__close"
-          onClick={onClose}
-          aria-label="关闭"
-          title="关闭"
-        >
-          <CloseIcon />
-        </button>
-        {previewUrl ? (
-          <img
-            className="share-modal__preview"
-            src={previewUrl}
-            alt="今日金价分享卡片"
-          />
-        ) : (
-          <p className="share-modal__loading">正在生成分享卡片…</p>
-        )}
-        <div className="share-modal__actions">
-          {canShare ? (
-            <button
-              type="button"
-              className="icon-button"
-              onClick={onShare}
-              disabled={busy}
-              aria-label="分享到系统"
-              title="分享"
-            >
-              <ShareIcon />
-            </button>
-          ) : null}
+        <div className="share-modal__chrome">
+          <p id="share-modal-title" className="share-modal__eyebrow">
+            分享今日金价
+          </p>
           <button
             type="button"
-            className="icon-button"
-            onClick={onDownload}
-            disabled={busy || !blob}
-            aria-label="下载卡片"
-            title="下载"
+            className="icon-button share-modal__close"
+            onClick={onClose}
+            aria-label="关闭"
+            title="关闭"
           >
-            <DownloadIcon />
+            <CloseIcon />
           </button>
         </div>
-        {message ? (
-          <p
-            className="share-feedback share-modal__message"
-            role="status"
-            data-tone={tone}
-          >
-            {message}
-          </p>
-        ) : null}
+
+        <div className="share-modal__stage">
+          {previewUrl ? (
+            <img
+              className="share-modal__preview"
+              src={previewUrl}
+              alt="今日金价分享卡片"
+            />
+          ) : (
+            <p className="share-modal__loading">正在生成分享卡片…</p>
+          )}
+        </div>
+
+        <div className="share-modal__footer">
+          <div className="share-modal__actions">
+            {canShare ? (
+              <button
+                type="button"
+                className="share-modal__action"
+                onClick={onShare}
+                disabled={busy || !blob}
+              >
+                <ShareIcon />
+                分享
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="share-modal__action share-modal__action--primary"
+              onClick={onDownload}
+              disabled={busy || !blob}
+            >
+              <DownloadIcon />
+              下载
+            </button>
+          </div>
+          {message ? (
+            <p
+              className="share-feedback share-modal__message"
+              role="status"
+              data-tone={tone}
+            >
+              {message}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   );

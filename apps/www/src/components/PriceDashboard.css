@@ -137,10 +137,11 @@
   inset: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 1.25rem;
-  background: rgb(0 0 0 / 55%);
+  padding: 0;
+  background: rgb(0 0 0 / 52%);
+  backdrop-filter: blur(6px);
   animation: share-backdrop-in 280ms ease-out;
 }
 
@@ -149,15 +150,118 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: min(24rem, 100%);
-  max-height: 90vh;
-  padding: 1.25rem;
-  border-radius: 1rem;
-  background: var(--bg);
+  width: 100%;
+  max-height: min(92svh, 44rem);
+  padding: 0.85rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+  border-bottom: 0;
+  border-radius: 1.15rem 1.15rem 0 0;
+  background:
+    radial-gradient(circle at 82% 0%, var(--glow), transparent 42%),
+    var(--bg);
   color: var(--text);
-  box-shadow: 0 20px 50px rgb(0 0 0 / 45%);
   overflow: auto;
-  animation: share-modal-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: share-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.share-modal__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+}
+
+.share-modal__eyebrow {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.share-modal__close {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-color: color-mix(in srgb, var(--control-border) 70%, transparent);
+}
+
+.share-modal__stage {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  overflow: hidden;
+}
+
+.share-modal__preview {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-modal__loading {
+  margin: 0;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.share-modal__footer {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.share-modal__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.share-modal__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.65rem;
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold);
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.share-modal__action--primary {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.share-modal__action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.share-modal__action:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.share-modal__action svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.share-modal__message {
+  margin: 0;
+  text-align: center;
 }
 
 @keyframes share-backdrop-in {
@@ -170,10 +274,10 @@
   }
 }
 
-@keyframes share-modal-in {
+@keyframes share-sheet-in {
   from {
-    opacity: 0;
-    transform: translateY(0.75rem) scale(0.98);
+    opacity: 0.72;
+    transform: translateY(1.25rem);
   }
 
   to {
@@ -182,37 +286,46 @@
   }
 }
 
-.share-modal__close {
-  position: absolute;
-  z-index: 1;
-  top: 0.75rem;
-  right: 0.75rem;
+@keyframes share-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.share-modal__preview {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-}
+@media (min-width: 40rem) {
+  .share-modal-backdrop {
+    align-items: center;
+    padding: 1.5rem;
+  }
 
-.share-modal__loading {
-  margin: 0;
-  padding: 2rem 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-align: center;
-}
+  .share-modal {
+    width: min(34rem, 100%);
+    max-height: min(90vh, 42rem);
+    padding: 1.15rem 1.25rem 1.25rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+    border-radius: 1rem;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 38%);
+    animation-name: share-modal-in;
+  }
 
-.share-modal__actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-}
+  .share-modal__stage {
+    min-height: 12rem;
+  }
 
-.share-modal__message {
-  margin: 0;
-  text-align: center;
+  .share-modal__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .share-modal__actions:has(> :only-child) {
+    grid-template-columns: minmax(10rem, 14rem);
+    justify-content: center;
+  }
 }
 
 .quote-block {
