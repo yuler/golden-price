@@ -56,7 +56,12 @@ const ogImageUrl = new URL(
         const storageKey = "gp-theme";
         const darkColor = "#101116";
         const lightColor = "#f6f3ea";
-        const saved = localStorage.getItem(storageKey);
+        let saved = null;
+        try {
+          saved = localStorage.getItem(storageKey);
+        } catch {
+          // Storage access can throw in private mode or when disabled.
+        }
         const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const theme =
           saved === "light" || saved === "dark"

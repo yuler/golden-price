@@ -69,19 +69,13 @@ function applyTheme(theme: Theme): void {
 }
 
 function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>("dark");
-
-  useEffect(() => {
-    setTheme(readTheme());
-  }, []);
+  const [theme, setTheme] = useState<Theme>(readTheme);
 
   const toggle = useCallback(() => {
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      applyTheme(next);
-      return next;
-    });
-  }, []);
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  }, [theme]);
 
   return [theme, toggle];
 }
@@ -257,6 +251,7 @@ function LoadedDashboard({
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const [shareMessage, setShareMessage] = useState("");
   const [canShare, setCanShare] = useState(false);
+  const shareCardBlob = useRef<Blob | null>(null);
 
   useEffect(() => {
     const probe = new File([new Uint8Array([137, 80, 78, 71])], "probe.png", {
@@ -276,6 +271,10 @@ function LoadedDashboard({
       observations,
     });
   }, [change, file.date, latest, observations, source, updated]);
+
+  useEffect(() => {
+    shareCardBlob.current = null;
+  }, [exportCard]);
 
   const handleDownload = useCallback(async () => {
     if (!latest || shareStatus === "busy") return;
@@ -297,7 +296,7 @@ function LoadedDashboard({
     setShareStatus("busy");
     setShareMessage("");
     try {
-      const blob = await exportCard();
+      const blob = shareCardBlob.current ?? (await exportCard());
       const fileName = shareCardFilename(file.date);
       const cardFile = new File([blob], fileName, { type: "image/png" });
       const shareText = `今日金价 ${latest.value.toFixed(2)} 元/克`;
@@ -317,6 +316,17 @@ function LoadedDashboard({
       setShareMessage(error instanceof Error ? error.message : "分享失败");
     }
   }, [exportCard, file.date, latest, shareStatus]);
+
+  const warmShareCard = useCallback(() => {
+    if (shareCardBlob.current || shareStatus === "busy") return;
+    void exportCard()
+      .then((blob) => {
+        shareCardBlob.current = blob;
+      })
+      .catch(() => {
+        // handleShare surfaces the real error.
+      });
+  }, [exportCard, shareStatus]);
 
   return (
     <main className="market-page" aria-live="polite">
@@ -361,6 +371,7 @@ function LoadedDashboard({
               <button
                 type="button"
                 className="share-action"
+                onPointerDown={warmShareCard}
                 onClick={() => void handleShare()}
                 disabled={shareStatus === "busy"}
               >
