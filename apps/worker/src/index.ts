@@ -1,6 +1,12 @@
-import { collectJingjinjin } from "@golden-price/core/worker";
+import {
+  JINGJINJIN_STORAGE_KEY,
+  collectJingjinjin,
+  type DailyPriceFile,
+} from "@golden-price/core/worker";
 import { corsHeaders, jsonResponse } from "./cors.js";
 import { writeManifest } from "./manifest.js";
+import { OG_IMAGE_KEY, readOgImage, writeOgImage } from "./og-image.js";
+import { quoteFromDailyFile } from "./og-quote.js";
 import { MANIFEST_KEY, R2DailyPriceStore } from "./r2-store.js";
 
 export interface Env {
@@ -26,6 +32,10 @@ export default {
 
     const url = new URL(request.url);
     const store = new R2DailyPriceStore(env.GOLDEN_PRICE_DATA);
+
+    if (url.pathname === "/og.png") {
+      return serveOgImage(env, store, request);
+    }
 
     if (url.pathname === "/data/manifest.json") {
       const raw = await store.getRaw(MANIFEST_KEY);
@@ -68,10 +78,86 @@ export default {
   },
 };
 
+async function serveOgImage(
+  env: Env,
+  store: R2DailyPriceStore,
+  request: Request,
+): Promise<Response> {
+  let object = await readOgImage(env.GOLDEN_PRICE_DATA);
+  if (!object) {
+    await refreshOgImage(store, env.GOLDEN_PRICE_DATA);
+    object = await readOgImage(env.GOLDEN_PRICE_DATA);
+  }
+  if (!object) {
+    return jsonResponse(
+      JSON.stringify({ error: "OG image unavailable" }),
+      request,
+      404,
+    );
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("Content-Type", "image/png");
+  headers.set("Cache-Control", "public, max-age=300");
+  headers.set("ETag", object.httpEtag);
+  Object.entries(corsHeaders(request)).forEach(([key, value]) => {
+    headers.set(key, value);
+  });
+
+  return new Response(object.body, { status: 200, headers });
+}
+
+async function refreshOgImage(
+  store: R2DailyPriceStore,
+  bucket: R2Bucket,
+): Promise<boolean> {
+  const channelId = JINGJINJIN_STORAGE_KEY;
+  const dates = await store.listDates(channelId);
+  const latestDate = dates.at(-1);
+  if (!latestDate) return false;
+
+  const file = await store.load(channelId, latestDate);
+  if (!file) return false;
+
+  return writeOgFromFile(bucket, file, channelId);
+}
+
+async function writeOgFromFile(
+  bucket: R2Bucket,
+  file: DailyPriceFile,
+  channelId: string,
+): Promise<boolean> {
+  const quote = quoteFromDailyFile(file, channelId);
+  if (!quote) return false;
+  await writeOgImage(bucket, quote);
+  return true;
+}
+
 async function runCollect(env: Env): Promise<void> {
   const store = new R2DailyPriceStore(env.GOLDEN_PRICE_DATA);
   const result = await collectJingjinjin(store);
   await writeManifest(store);
+
+  let ogUpdated = false;
+  try {
+    const file = await store.load(JINGJINJIN_STORAGE_KEY, result.date);
+    if (file) {
+      ogUpdated = await writeOgFromFile(
+        env.GOLDEN_PRICE_DATA,
+        file,
+        JINGJINJIN_STORAGE_KEY,
+      );
+    }
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "og-image-error",
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+
   console.log(
     JSON.stringify({
       event: "collect",
@@ -81,6 +167,8 @@ async function runCollect(env: Env): Promise<void> {
       slot: result.slot,
       value: result.value,
       trade: result.trade,
+      ogUpdated,
+      ogKey: OG_IMAGE_KEY,
     }),
   );
 }
