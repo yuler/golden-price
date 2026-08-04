@@ -31,8 +31,8 @@ export default defineConfig({
         "og-gold-price.png",
       ],
       manifest: {
-        name: "今日金价",
-        short_name: "金价",
+        name: "今日金价 · Golden Price",
+        short_name: "金价 Gold",
         description: "每五分钟采集一次的人民币黄金克价与当日走势。",
         theme_color: "#101116",
         background_color: "#101116",
