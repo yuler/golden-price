@@ -72,9 +72,19 @@ export default {
   async scheduled(
     _controller: ScheduledController,
     env: Env,
-    ctx: ExecutionContext,
+    _ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(runCollect(env));
+    try {
+      await runCollect(env);
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "collect-error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      throw error;
+    }
   },
 };
 
@@ -143,7 +153,16 @@ async function writeOgFromFile(
   return true;
 }
 
-async function runCollect(env: Env): Promise<void> {
+async function runCollect(env: Env): Promise<{
+  path: string;
+  date: string;
+  hour: number;
+  slot: number;
+  value: number | null;
+  trade: boolean;
+  ogUpdated: boolean;
+  ogKey: string;
+}> {
   const store = new R2DailyPriceStore(env.GOLDEN_PRICE_DATA);
   const result = await collectJingjinjin(store);
   await writeManifest(store);
@@ -167,17 +186,17 @@ async function runCollect(env: Env): Promise<void> {
     );
   }
 
-  console.log(
-    JSON.stringify({
-      event: "collect",
-      path: result.path,
-      date: result.date,
-      hour: result.hour,
-      slot: result.slot,
-      value: result.value,
-      trade: result.trade,
-      ogUpdated,
-      ogKey: OG_IMAGE_KEY,
-    }),
-  );
+  const summary = {
+    path: result.path,
+    date: result.date,
+    hour: result.hour,
+    slot: result.slot,
+    value: result.value,
+    trade: result.trade,
+    ogUpdated,
+    ogKey: OG_IMAGE_KEY,
+  };
+
+  console.log(JSON.stringify({ event: "collect", ...summary }));
+  return summary;
 }
