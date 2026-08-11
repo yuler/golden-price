@@ -11,9 +11,9 @@ import type { DailyPriceStore } from "./storage/types.js";
 export const JINGJINJIN_STORAGE_KEY = "jingjinjin.cn";
 
 export function recordedValue(
-  quote: Pick<PriceQuote, "trade" | "cnyPerGram">,
+  quote: Pick<PriceQuote, "cnyPerGram">,
 ): PriceCell {
-  return quote.trade ? quote.cnyPerGram : null;
+  return quote.cnyPerGram ?? null;
 }
 
 export async function collectJingjinjin(
