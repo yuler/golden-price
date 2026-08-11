@@ -11,7 +11,7 @@
     "cli:dev": "pnpm --filter @golden-price/cli dev",
     "cli:build": "pnpm --filter @golden-price/cli build",
     "cli:collect": "pnpm --filter @golden-price/cli collect",
-    "cli:fetch": "pnpm --filter @golden-price/cli fetch",
+    "cli:fetch": "pnpm --filter @golden-price/cli run fetch",
     "www:dev": "pnpm --filter @golden-price/www dev",
     "www:build": "pnpm --filter @golden-price/www build",
     "worker:dev": "pnpm --filter @golden-price/worker dev",
