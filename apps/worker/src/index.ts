@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers";
 import {
   JINGJINJIN_STORAGE_KEY,
   collectJingjinjin,
@@ -11,13 +12,73 @@ import { MANIFEST_KEY, R2DailyPriceStore } from "./r2-store.js";
 export interface Env {
   GOLDEN_PRICE_DATA: R2Bucket;
   COLLECT_TOKEN?: string;
+  COLLECTOR: DurableObjectNamespace<PriceCollector>;
 }
 
 const DATA_DAY_PATH =
   /^\/data\/([^/]+)\/(\d{4}-\d{2}-\d{2})\.json$/;
+const COLLECT_EVERY_MS = 5 * 60 * 1000;
+
+function nextCollectAt(now = Date.now()): number {
+  return Math.floor(now / COLLECT_EVERY_MS) * COLLECT_EVERY_MS + COLLECT_EVERY_MS;
+}
+
+export class PriceCollector extends DurableObject<Env> {
+  async ensureAlarm(): Promise<void> {
+    const existing = await this.ctx.storage.getAlarm();
+    if (existing === null) {
+      await this.ctx.storage.setAlarm(nextCollectAt());
+    }
+  }
+
+  async kick(): Promise<{
+    path: string;
+    date: string;
+    hour: number;
+    slot: number;
+    value: number | null;
+    trade: boolean;
+    nextAlarm: number;
+  }> {
+    const summary = await runCollect(this.env);
+    const nextAlarm = nextCollectAt();
+    await this.ctx.storage.setAlarm(nextAlarm);
+    return { ...summary, nextAlarm };
+  }
+
+  async alarm(): Promise<void> {
+    console.log(JSON.stringify({ event: "collector-alarm" }));
+    try {
+      await runCollect(this.env);
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: "collect-error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    } finally {
+      await this.ctx.storage.setAlarm(nextCollectAt());
+    }
+  }
+}
+
+async function ensureCollector(env: Env): Promise<void> {
+  const stub = env.COLLECTOR.get(env.COLLECTOR.idFromName("jingjinjin"));
+  await stub.ensureAlarm();
+}
+
+async function kickCollector(env: Env) {
+  const stub = env.COLLECTOR.get(env.COLLECTOR.idFromName("jingjinjin"));
+  return stub.kick();
+}
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
@@ -50,6 +111,7 @@ export default {
     }
 
     if (url.pathname === "/data/manifest.json") {
+      ctx.waitUntil(ensureCollector(env));
       const raw = await store.getRaw(MANIFEST_KEY);
       if (raw) return jsonResponse(raw, request);
       const manifest = await writeManifest(store);
@@ -72,6 +134,7 @@ export default {
     }
 
     if (url.pathname === "/" || url.pathname === "/health") {
+      await ensureCollector(env);
       return jsonResponse(
         JSON.stringify({ ok: true, service: "golden-price" }),
         request,
@@ -84,8 +147,9 @@ export default {
   async scheduled(
     _controller: ScheduledController,
     env: Env,
-    _ctx: ExecutionContext,
+    ctx: ExecutionContext,
   ): Promise<void> {
+    ctx.waitUntil(ensureCollector(env));
     try {
       await runCollect(env);
     } catch (error) {
@@ -111,7 +175,7 @@ async function handleCollect(request: Request, env: Env): Promise<Response> {
   }
 
   try {
-    const summary = await runCollect(env);
+    const summary = await kickCollector(env);
     return jsonResponse(JSON.stringify(summary), request);
   } catch (error) {
     console.error(

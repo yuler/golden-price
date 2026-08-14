@@ -16,6 +16,14 @@ preview_bucket_name = "golden-price-data-preview"
 [triggers]
 crons = ["*/5 * * * *"]
 
+[[durable_objects.bindings]]
+name = "COLLECTOR"
+class_name = "PriceCollector"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PriceCollector"]
+
 [observability]
 enabled = true
 head_sampling_rate = 1
