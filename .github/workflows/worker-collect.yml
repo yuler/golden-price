@@ -1,0 +1,32 @@
+name: Collect prices
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Worker collect
+        env:
+          COLLECT_TOKEN: ${{ secrets.COLLECT_TOKEN }}
+          COLLECT_URL: ${{ vars.PUBLIC_DATA_BASE_URL || 'https://api.gold.yuler.dev' }}
+        run: |
+          if [ -z "$COLLECT_TOKEN" ]; then
+            echo "COLLECT_TOKEN secret is not set"
+            exit 1
+          fi
+          base="${COLLECT_URL%/}"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${COLLECT_TOKEN}" \
+            -H "Accept: application/json" \
+            "${base}/collect"

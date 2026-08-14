@@ -10,6 +10,7 @@ import { MANIFEST_KEY, R2DailyPriceStore } from "./r2-store.js";
 
 export interface Env {
   GOLDEN_PRICE_DATA: R2Bucket;
+  COLLECT_TOKEN?: string;
 }
 
 const DATA_DAY_PATH =
@@ -21,6 +22,19 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
+    const url = new URL(request.url);
+
+    if (url.pathname === "/collect") {
+      if (request.method !== "GET" && request.method !== "POST") {
+        return jsonResponse(
+          JSON.stringify({ error: "Method not allowed" }),
+          request,
+          405,
+        );
+      }
+      return handleCollect(request, env);
+    }
+
     if (request.method !== "GET") {
       return jsonResponse(
         JSON.stringify({ error: "Method not allowed" }),
@@ -29,7 +43,6 @@ export default {
       );
     }
 
-    const url = new URL(request.url);
     const store = new R2DailyPriceStore(env.GOLDEN_PRICE_DATA);
 
     if (url.pathname === "/og.png") {
@@ -86,6 +99,36 @@ export default {
     }
   },
 };
+
+async function handleCollect(request: Request, env: Env): Promise<Response> {
+  const token = env.COLLECT_TOKEN;
+  const authorized =
+    typeof token === "string" &&
+    token.length > 0 &&
+    request.headers.get("Authorization") === `Bearer ${token}`;
+  if (!authorized) {
+    return jsonResponse(JSON.stringify({ error: "Unauthorized" }), request, 401);
+  }
+
+  try {
+    const summary = await runCollect(env);
+    return jsonResponse(JSON.stringify(summary), request);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "collect-error",
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    return jsonResponse(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : "Collect failed",
+      }),
+      request,
+      500,
+    );
+  }
+}
 
 async function serveOgImage(
   env: Env,
