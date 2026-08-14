@@ -149,6 +149,8 @@ async function writeOgFromFile(
 ): Promise<boolean> {
   const quote = quoteFromDailyFile(file, channelId);
   if (!quote) return false;
+  const existing = await bucket.head(OG_IMAGE_KEY);
+  if (!isOgStale(existing?.customMetadata, quote)) return false;
   await writeOgImage(bucket, quote);
   return true;
 }

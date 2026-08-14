@@ -83,19 +83,24 @@ describe("isOgStale", () => {
     assert.equal(isOgStale(undefined, quote), true);
   });
 
-  it("matches on date and updatedLabel", () => {
+  it("matches on date and price, ignoring a newer slot at the same price", () => {
     assert.equal(
       isOgStale(
-        { date: "2026-07-30", updatedLabel: "2026-07-30 10:00 更新" },
+        {
+          date: "2026-07-30",
+          price: "102.50",
+          updatedLabel: "2026-07-30 09:00 更新",
+        },
         quote,
       ),
       false,
     );
     assert.equal(
-      isOgStale(
-        { date: "2026-07-30", updatedLabel: "2026-07-30 09:00 更新" },
-        quote,
-      ),
+      isOgStale({ date: "2026-07-30", price: "101.00" }, quote),
+      true,
+    );
+    assert.equal(
+      isOgStale({ date: "2026-07-29", price: "102.50" }, quote),
       true,
     );
   });

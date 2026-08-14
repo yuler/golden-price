@@ -87,13 +87,13 @@ export function quoteFromDailyFile(
   };
 }
 
-/** True when R2 OG metadata does not match the latest quote fingerprint. */
+/** True when the stored OG does not match today's latest price. */
 export function isOgStale(
   metadata: Record<string, string> | undefined,
   quote: OgQuote,
 ): boolean {
-  if (!metadata?.date || !metadata.updatedLabel) return true;
+  if (!metadata?.date || !metadata.price) return true;
   return (
-    metadata.date !== quote.date || metadata.updatedLabel !== quote.updatedLabel
+    metadata.date !== quote.date || metadata.price !== quote.price.toFixed(2)
   );
 }
