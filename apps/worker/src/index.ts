@@ -1,7 +1,6 @@
 import {
   JINGJINJIN_STORAGE_KEY,
   collectJingjinjin,
-  type DailyPriceFile,
 } from "@golden-price/core/worker";
 import { corsHeaders, jsonResponse } from "./cors.js";
 import { writeManifest } from "./manifest.js";
@@ -142,19 +141,6 @@ async function latestOgQuote(store: R2DailyPriceStore) {
   return quoteFromDailyFile(file, channelId);
 }
 
-async function writeOgFromFile(
-  bucket: R2Bucket,
-  file: DailyPriceFile,
-  channelId: string,
-): Promise<boolean> {
-  const quote = quoteFromDailyFile(file, channelId);
-  if (!quote) return false;
-  const existing = await bucket.head(OG_IMAGE_KEY);
-  if (!isOgStale(existing?.customMetadata, quote)) return false;
-  await writeOgImage(bucket, quote);
-  return true;
-}
-
 async function runCollect(env: Env): Promise<{
   path: string;
   date: string;
@@ -162,31 +148,10 @@ async function runCollect(env: Env): Promise<{
   slot: number;
   value: number | null;
   trade: boolean;
-  ogUpdated: boolean;
-  ogKey: string;
 }> {
   const store = new R2DailyPriceStore(env.GOLDEN_PRICE_DATA);
   const result = await collectJingjinjin(store);
   await writeManifest(store);
-
-  let ogUpdated = false;
-  try {
-    const file = await store.load(JINGJINJIN_STORAGE_KEY, result.date);
-    if (file) {
-      ogUpdated = await writeOgFromFile(
-        env.GOLDEN_PRICE_DATA,
-        file,
-        JINGJINJIN_STORAGE_KEY,
-      );
-    }
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        event: "og-image-error",
-        message: error instanceof Error ? error.message : String(error),
-      }),
-    );
-  }
 
   const summary = {
     path: result.path,
@@ -195,8 +160,6 @@ async function runCollect(env: Env): Promise<{
     slot: result.slot,
     value: result.value,
     trade: result.trade,
-    ogUpdated,
-    ogKey: OG_IMAGE_KEY,
   };
 
   console.log(JSON.stringify({ event: "collect", ...summary }));
